@@ -54,7 +54,7 @@ def setup_gpio():
     GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 # sets color for light
-def set_rbg(r_pin, g_pin, b_pin, color:str):
+def set_rgb(r_pin, g_pin, b_pin, color:str):
     GPIO.output(r_pin,GPIO.LOW)
     GPIO.output(g_pin,GPIO.LOW)
     GPIO.output(b_pin,GPIO.LOW)
@@ -86,15 +86,16 @@ def show_digit(d:int):
 # to blue, blinks 3 times, turns red
 def blink_light2_blue(times: int = 3, on_time: float = 0.5, off_time: float = 0.5):
     for i in range(times):
-        set_rbg(L2_R,L2_G,L2_B, "blue")
-        set_rbg(L2_R,L2_G,L2_B, "off")
+        set_rgb(L2_R,L2_G,L2_B, "blue")
+        time.sleep(on_time)
+        set_rgb(L2_R,L2_G,L2_B, "off")
         time.sleep(off_time)
-    set_rbg(L2_R,L2_G,L2_B, "red")
+    set_rgb(L2_R,L2_G,L2_B, "red")
 
 #4 c,d,e
 def run_countdown_l1():
     
-    set_rbg(L1_R,L1_G,L1_B, "green")
+    set_rgb(L1_R,L1_G,L1_B, "green")
 
     for n in range (9, -1 ,-1):
         show_digit(n)
@@ -105,15 +106,15 @@ def run_countdown_l1():
         if n <= 4:
             while time.monotonic() - start < duration:
             
-                set_rbg(L1_R,L1_G,L1_B, "blue")
+                set_rgb(L1_R,L1_G,L1_B, "blue")
                 time.sleep(off_time)
                 if time.monotonic() - start > duration:
                     break
-                set_rbg(L1_R,L1_G,L1_B, "off")
+                set_rgb(L1_R,L1_G,L1_B, "off")
                 time.sleep(off_time)
     clear_7seg()
-    set_rbg(L1_R,L1_G,L1_B, "red")
-    set_rbg(L2_R,L2_G,L2_B, "green")
+    set_rgb(L1_R,L1_G,L1_B, "red")
+    set_rgb(L2_R,L2_G,L2_B, "green")
 
 
 # make read_button_debounced

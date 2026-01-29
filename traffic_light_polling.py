@@ -103,15 +103,20 @@ def run_countdown_l1():
         start = time.monotonic()
         duration = 1.0
         off_time = 0.2
-        if n <= 4:
+        if n > 4:
+            # Hold green and the number for 1 second
+            set_rgb(L1_R, L1_G, L1_B, "green")
+            time.sleep(duration)
+        else:
             while time.monotonic() - start < duration:
-            
+
                 set_rgb(L1_R,L1_G,L1_B, "blue")
                 time.sleep(off_time)
                 if time.monotonic() - start > duration:
                     break
                 set_rgb(L1_R,L1_G,L1_B, "off")
                 time.sleep(off_time)
+        
     clear_7seg()
     set_rgb(L1_R,L1_G,L1_B, "red")
     set_rgb(L2_R,L2_G,L2_B, "green")

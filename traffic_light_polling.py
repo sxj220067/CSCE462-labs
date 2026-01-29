@@ -64,6 +64,10 @@ def set_rbg(r_pin, g_pin, b_pin, color:str):
         GPIO.output(g_pin,GPIO.HIGH)
     elif color == "blue":
         GPIO.output(b_pin,GPIO.HIGH)
+    elif color == "off":
+        GPIO.output(r_pin,GPIO.LOW)
+        GPIO.output(g_pin,GPIO.LOW)
+        GPIO.output(b_pin,GPIO.LOW)
     else:
         pass
 
@@ -113,16 +117,61 @@ def run_countdown_l1():
 
 
 # make read_button_debounced
+def read_button_pressed_debounce(last_press_time: float) -> bool:
+    pressed = (GPIO.input(BUTTON) == GPIO.HIGH)
+    if not pressed:
+        return False
 
+    now = time.time()
+    if now - last_press_time < DEBOUNCE_SECONDS:
+        return False
 
-
+    return True
 def main():
     setup_gpio()
 
-    #4a when button is not pressed traffic light 2 stays green
-    set_rbg(L1_R, L1_G, L1_B, "red")
-    set_rbg(L2_R, L2_G, L2_B, "green")
+    # (a) initial: TL2 green, TL1 red
+    set_rgb(L1_R, L1_G, L1_B, "red")
+    set_rgb(L2_R, L2_G, L2_B, "green")
     clear_7seg()
+
+    last_debounce_time = 0.0
+    last_valid_press_time = -1e9  # so first press is always allowed
+
+    try:
+        while True:
+            # Keep TL2 green when idle (safe re-assert)
+            # (doesn't hurt even if already green)
+            # set_rgb(L2_R, L2_G, L2_B, "green")  # optional
+
+            # detect press (debounced)
+            if read_button_pressed_debounce(last_debounce_time):
+                last_debounce_time = time.time()
+
+                now = time.time()
+                # (f) cooldown: only accept if 20 seconds passed
+                if now - last_valid_press_time >= COOLDOWN_SECONDS:
+                    last_valid_press_time = now
+
+                    # (b) TL2 blue blink then red
+                    blink_light2_blue(times=3, on_time=0.25, off_time=0.25)
+
+                    # (c)(d)(e) TL1 countdown + flashing + restore
+                    run_countdown_l1()
+
+                # else: ignore press during cooldown
+
+            time.sleep(POLL_DELAY)
+
+    finally:
+        clear_7seg()
+        set_rgb(L1_R, L1_G, L1_B, "off")
+        set_rgb(L2_R, L2_G, L2_B, "off")
+        GPIO.cleanup()
+
+
+if __name__ == "__main__":
+    main()
 
     
 

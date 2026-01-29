@@ -131,8 +131,8 @@ def main():
     setup_gpio()
 
     # (a) initial: TL2 green, TL1 red
-    set_rgb(L1_R, L1_G, L1_B, "red")
-    set_rgb(L2_R, L2_G, L2_B, "green")
+    set_rbg(L1_R, L1_G, L1_B, "red")
+    set_rbg(L2_R, L2_G, L2_B, "green")
     clear_7seg()
 
     last_debounce_time = 0.0
@@ -165,8 +165,8 @@ def main():
 
     finally:
         clear_7seg()
-        set_rgb(L1_R, L1_G, L1_B, "off")
-        set_rgb(L2_R, L2_G, L2_B, "off")
+        set_rbg(L1_R, L1_G, L1_B, "off")
+        set_rbg(L2_R, L2_G, L2_B, "off")
         GPIO.cleanup()
 
 

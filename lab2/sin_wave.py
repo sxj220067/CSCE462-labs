@@ -4,26 +4,33 @@ import board
 import busio
 import adafruit_mcp4725
 
-# I2C + DAC setup (MCP4725 is 12-bit, single channel)
-i2c = busio.I2C(board.SCL, board.SDA)
-dac = adafruit_mcp4725.MCP4725(i2c, address=0x62)
+VCC = 3.3
+I2C_ADDR = 0x62
+SAMPLE_RATE = 2000  # Hz
 
-def sin_wave():
-    t = 0.0
-    tStep = 0.05  # controls frequency
+i2c = busio.I2C(board.SCL, board.SDA)
+dac = adafruit_mcp4725.MCP4725(i2c, address=I2C_ADDR)
+
+def volts_to_dac(v):
+    return int((v / VCC) * 4095)
+
+def sin_wave(freq, vmax, stop_check):
+    dt = 1.0 / SAMPLE_RATE
+    phase = 0.0
+    omega = 2.0 * math.pi * freq
+
+    amplitude = vmax / 2.0
+    offset = vmax / 2.0
 
     while True:
-        # 12-bit output range: 0..4095
-        value = int(2048 * (1.0 + 0.5 * math.sin(6.2832 * t)))
+        if stop_check():
+            return
 
-        # safety clamp (optional but good)
-        if value < 0:
-            value = 0
-        elif value > 4095:
-            value = 4095
+        voltage = offset + amplitude * math.sin(phase)
+        dac.value = volts_to_dac(voltage)
 
-        dac.value = value
-        t += tStep
-        time.sleep(0.0005)
+        phase += omega * dt
+        if phase >= 2.0 * math.pi:
+            phase -= 2.0 * math.pi
 
-sin_wave()
+        time.sleep(dt)

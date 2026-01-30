@@ -2,12 +2,10 @@
 #include <stdio.h>
 #include <stdint.h>
 
-// ---- global variables your function depends on ----
+//global variable
 volatile uint32_t *gpioBase;
 int pin = 0;
 
-// ---- dummy implementations if your lab requires them ----
-// (replace these with your lab's real versions if provided)
 void setPinOn(volatile uint32_t *base, int p) {
     digitalWrite(p, HIGH);
 }
@@ -16,7 +14,6 @@ void setPinOff(volatile uint32_t *base, int p) {
     digitalWrite(p, LOW);
 }
 
-// ---- your function (UNCHANGED) ----
 void squareWave(){
     while(1){
         setPinOn(gpioBase,pin);
@@ -26,22 +23,33 @@ void squareWave(){
     }
 }
 
-// ---- main ----
-int main(void){
-    wiringPiSetup();        // init wiringPi
-    pinMode(pin, OUTPUT);  // set GPIO as output
 
-    squareWave();           // run forever
+int main(void){
+    wiringPiSetup();       
+    pinMode(pin, OUTPUT);  
+
+    squareWave();           
     return 0;
 }
 // // !!optional!!
 // #include <wiringPi.h>
 // #include <stdio.h>
-// #include <unistd.h>
-// #define outputPin 0
-// #define C4 261.6 //Hz
-// #define period 1 //second
+// #include <stdint.h>
 
+// #define outputPin 0
+// #define period 1 //second
+// #define C4 261.6 //Hz
+// #define freq 
+
+// volatile uint32_t *gpioBase = 0;
+
+// void setPinOn(volatile uint32_t *base, int p) {
+//     digitalWrite(p, HIGH);
+// }
+
+// void setPinOff(volatile uint32_t *base, int p) {
+//     digitalWrite(p, LOW);
+// }
 // void tone(){
 //     long half_cycle = (long)(1000000/(2*C4));
 //     long numberOfloops = (long)(freq*period);
@@ -59,9 +67,12 @@ int main(void){
 
 // int main(){
 //     //set up gpio. TImer,etc. here
+//     wiringPiSetup();
+//     pinMode(outputPin, OUTPUT);
 //     while(1){
 //         run();
 //     }
+//     return 0;
 // }
 
 

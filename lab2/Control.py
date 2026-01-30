@@ -8,17 +8,20 @@ from square import square_wave
 BUTTON_PIN = 17  # BCM GPIO17 (physical pin 11)
 
 # ----------------------------
-# GPIO setup
+# GPIO setup (PULL-DOWN)
 # ----------------------------
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def wait_for_button():
-    GPIO.wait_for_edge(BUTTON_PIN, GPIO.FALLING)
+    # silent idle until pressed (pressed = HIGH)
+    while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+        time.sleep(0.01)
     time.sleep(0.2)  # debounce
 
 def button_pressed():
-    return GPIO.input(BUTTON_PIN) == GPIO.LOW
+    # pressed = HIGH (pull-down wiring)
+    return GPIO.input(BUTTON_PIN) == GPIO.HIGH
 
 def get_user_inputs():
     while True:

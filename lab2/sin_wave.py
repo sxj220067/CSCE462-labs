@@ -2,7 +2,7 @@ import time
 import math
 import board
 import busio
-import adafruit_mcp4728
+import adafruit_mcp4725
 
 # I2C + DAC setup
 i2c = busio.I2C(board.SCL, board.SDA)

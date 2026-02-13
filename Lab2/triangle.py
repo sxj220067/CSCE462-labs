@@ -7,7 +7,7 @@ VCC = 3.3
 I2C_ADDR = 0x62
 SAMPLE_RATE = 2000  # Hz
 
-i2c = busio.I2C(board.SCL, board.SDA)
+i2c = busio.I2C(board.SCL, board.SDA, frequency=400000)
 dac = adafruit_mcp4725.MCP4725(i2c, address=I2C_ADDR)
 
 def volts_to_dac(v):

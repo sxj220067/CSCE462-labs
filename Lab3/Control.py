@@ -209,7 +209,7 @@ def classify_waveform(x, fs):
     #   triangle: a3/a1 ~ 1/9 ≈ 0.11, a5/a1 ~ 1/25 = 0.04
     #   sine: a3/a1 ~ ~0
 
-    if r3 < 0.09 and r5 < 0.05 and r2 < 0.07:
+    if r3 < 0.12 and r5 < 0.07 and r2 < 0.10:
         label = "sin"
     else:
         # likely non-sine

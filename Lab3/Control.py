@@ -208,21 +208,13 @@ def classify_waveform(x, fs):
     #   square: a3/a1 ~ 1/3 ≈ 0.33, a5/a1 ~ 0.2
     #   triangle: a3/a1 ~ 1/9 ≈ 0.11, a5/a1 ~ 1/25 = 0.04
     #   sine: a3/a1 ~ ~0
-
-    if r3 < 0.12 and r5 < 0.07 and r2 < 0.10:
+    dist = math.sqrt(r2*r2 + r3*r3 + r5*r5)
+    if dist < 0.14:
         label = "sin"
+    elif r3 > 0.08 and (r5/(r3+1e-12) < 0.65):
+        label = "tri"
     else:
-        # likely non-sine
-        if (r3 > 0.18 and r5 > 0.10) or (frac_extreme > 0.18):
-            label = "square"
-        else:
-            # triangle-ish: noticeable r3 but much smaller r5; slopes relatively consistent
-            if r3 > 0.09 and r5 < 0.07 and (r5 / (r3 + eps) < 0.65) and slope_cv < 1.2:
-                label = "tri"
-            else:
-                # fallback between triangle/square based on harmonic decay + flatness
-                label = "tri" if (r5 / (r3 + eps) < 0.8 and frac_extreme < 0.18) else "square"
-
+        label = "square"
     return label, features
 
 

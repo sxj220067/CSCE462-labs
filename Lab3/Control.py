@@ -34,17 +34,17 @@ import spidev
 import RPi.GPIO as GPIO
 
 
-# -------------------- USER SETTINGS --------------------
+# USER SETTINGS 
 SPI_BUS = 0
-SPI_DEV = 0                 # still used by spidev for the bus/dev, even with manual CS
-CS_GPIO = 22                # your CS pin (GPIO22)
-ADC_CH = 0                  # MCP3008 channel (0..7)
+SPI_DEV = 0               
+CS_GPIO = 22               
+ADC_CH = 0                  
 
-VREF = 3.3                  # VREF = 3.3V (your wiring)
-SAMPLE_RATE = 5000          # Hz (raise if your signal is faster; keep <= ~20k typical)
-CAPTURE_SECONDS = 0.40      # seconds per capture (more seconds = better low-frequency accuracy)
-SPI_HZ = 1_000_000          # SPI clock (1 MHz is safe)
-# ------------------------------------------------------
+VREF = 3.3                 
+SAMPLE_RATE = 5000          
+CAPTURE_SECONDS = 0.40      
+SPI_HZ = 1_000_000        
+
 
 
 def setup_spi_and_gpio():
@@ -59,14 +59,8 @@ def setup_spi_and_gpio():
 
 
 def mcp3008_read(spi, channel: int) -> int:
-    """
-    Read MCP3008 single-ended channel.
-    Returns 10-bit int [0..1023].
-    Manual CS (GPIO22) so we can use any GPIO pin.
-    """
     if not (0 <= channel <= 7):
         raise ValueError("channel must be 0..7")
-
     # MCP3008 protocol: start(1), single-ended(1), channel(3), then 10-bit result
     # Send 3 bytes. Example widely used:
     # byte1: 0b00000001
@@ -93,24 +87,21 @@ def capture_samples(spi, fs: int, seconds: float):
         raw = mcp3008_read(spi, ADC_CH)
         x[i] = (raw / 1023.0) * VREF
 
-        # crude timing control; good enough for low-kHz
+        # crude timing control
         next_t += dt
         while True:
             now = time.perf_counter()
             if now >= next_t:
                 break
 
-    # Actual measured sampling rate (important for frequency accuracy)
+    # Actual measured sampling rate
     t1 = time.perf_counter()
     actual_fs = (n - 1) / (t1 - t0) if (t1 - t0) > 0 else fs
     return x, actual_fs
 
 
 def parabolic_interpolation(mags, k):
-    """
-    Parabolic peak interpolation around index k (FFT bin).
-    Returns fractional bin offset (delta) in [-0.5, 0.5] approx.
-    """
+
     if k <= 0 or k >= len(mags) - 1:
         return 0.0
     a = mags[k - 1]
@@ -124,10 +115,7 @@ def parabolic_interpolation(mags, k):
 
 
 def estimate_frequency_fft(x, fs):
-    """
-    Robust frequency estimate using FFT peak.
-    Returns (f0_hz, spectrum_freqs, spectrum_mags)
-    """
+
     x = np.asarray(x, dtype=np.float64)
 
     # Detrend and window
@@ -155,10 +143,7 @@ def estimate_frequency_fft(x, fs):
 
 
 def estimate_frequency_zero_cross(x, fs):
-    """
-    Secondary frequency estimate: mean positive-going zero crossings.
-    Works best for clean centered waveforms.
-    """
+
     x0 = x - np.mean(x)
     signs = np.sign(x0)
     # positive-going crossings: (-) to (+)
@@ -173,9 +158,7 @@ def estimate_frequency_zero_cross(x, fs):
 
 
 def harmonic_amplitude(freqs, mags, f0, n):
-    """
-    Get magnitude near nth harmonic of f0 using nearest bin.
-    """
+
     target = n * f0
     if target <= 0:
         return 0.0
@@ -184,10 +167,7 @@ def harmonic_amplitude(freqs, mags, f0, n):
 
 
 def classify_waveform(x, fs):
-    """
-    Classify waveform as sine / triangle / square using harmonic content + time-domain cues.
-    Returns (label, features_dict)
-    """
+
     # FFT-based features
     f0, freqs, mags = estimate_frequency_fft(x, fs)
     if f0 <= 0:
@@ -223,18 +203,11 @@ def classify_waveform(x, fs):
         "frac_extreme": frac_extreme,
         "slope_cv": slope_cv,
     }
-
-    # Heuristics:
-    # - Sine: very low harmonics (r3, r5 small) and low extremes dwelling
-    # - Square: strong odd harmonics, more extremes dwelling
-    # - Triangle: odd harmonics present but decay faster (r5 much smaller vs r3), slopes more consistent
-    #
+    
     # Typical ideal:
     #   square: a3/a1 ~ 1/3 ≈ 0.33, a5/a1 ~ 0.2
     #   triangle: a3/a1 ~ 1/9 ≈ 0.11, a5/a1 ~ 1/25 = 0.04
     #   sine: a3/a1 ~ ~0
-    #
-    # Real signals will vary; these thresholds are forgiving.
 
     if r3 < 0.08 and r5 < 0.05 and r2 < 0.08:
         label = "sin"

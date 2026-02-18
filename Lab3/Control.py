@@ -42,7 +42,7 @@ ADC_CH = 0
 
 VREF = 3.3                 
 SAMPLE_RATE = 5000          
-CAPTURE_SECONDS = 0.40      
+CAPTURE_SECONDS = 2.0     
 SPI_HZ = 1_000_000        
 
 

@@ -1,2 +1,2 @@
-# CSCE462-lab1
-polling and interrupt methods
+# CSCE462-Lab1
+Polling and Interrupt Methods

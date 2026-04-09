@@ -25,6 +25,7 @@ This project is a modular, Python-based vision pipeline for a Raspberry Pi trash
 - Python 3.7+
 - OpenCV
 - NumPy
+- `python3-picamera2` for Raspberry Pi Camera modules on Raspberry Pi OS
 
 Install dependencies:
 
@@ -45,6 +46,12 @@ If `opencv-python` fails to install from `pip` on Raspberry Pi OS, use the syste
 sudo apt install -y python3-opencv python3-numpy
 ```
 
+If you are using a Raspberry Pi Camera Module connected over CSI, install Picamera2:
+
+```bash
+sudo apt install -y python3-picamera2
+```
+
 ## Running
 
 ```bash
@@ -55,7 +62,9 @@ python3 main.py
 Press `q` or `Esc` to quit.
 
 ## Preconfigured behavior
-- Uses `config.CAMERA_SOURCE` (`0` default) for USB camera or PiCam.
+- `CAMERA_BACKEND = "auto"` tries `Picamera2` first, then falls back to OpenCV.
+- Use `CAMERA_BACKEND = "picamera2"` for Raspberry Pi Camera modules.
+- Use `CAMERA_BACKEND = "opencv"` with `CAMERA_SOURCE = 0` for USB webcams.
 - `MOTOR_MOCK = True` by default: commands print to console instead of driving motors.
 - Debug overlays show bounding boxes, centroid trail, predicted landing point, and FPS.
 

@@ -1,8 +1,43 @@
 import cv2
+import time
 import config
 
 
-def create_capture():
+class PiCameraCapture:
+    def __init__(self, camera):
+        self.camera = camera
+
+    def read(self):
+        frame = self.camera.capture_array()
+        if frame is None:
+            return False, None
+        return True, frame
+
+    def release(self):
+        self.camera.stop()
+
+
+def create_picamera2_capture():
+    try:
+        from picamera2 import Picamera2
+    except ImportError as exc:
+        raise RuntimeError(
+            "Picamera2 is not installed. On Raspberry Pi OS, run: "
+            "sudo apt install -y python3-picamera2"
+        ) from exc
+
+    camera = Picamera2()
+    preview_config = camera.create_preview_configuration(
+        main={"size": (config.FRAME_WIDTH, config.FRAME_HEIGHT), "format": "BGR888"},
+        controls={"FrameDurationLimits": (int(1_000_000 / config.TARGET_FPS), int(1_000_000 / config.TARGET_FPS))},
+    )
+    camera.configure(preview_config)
+    camera.start()
+    time.sleep(0.2)
+    return PiCameraCapture(camera)
+
+
+def create_opencv_capture():
     cap = cv2.VideoCapture(config.CAMERA_SOURCE)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
@@ -12,6 +47,24 @@ def create_capture():
         raise RuntimeError(f"Cannot open camera source {config.CAMERA_SOURCE}")
 
     return cap
+
+
+def create_capture():
+    backend = config.CAMERA_BACKEND.lower()
+
+    if backend == "picamera2":
+        return create_picamera2_capture()
+
+    if backend == "opencv":
+        return create_opencv_capture()
+
+    if backend == "auto":
+        try:
+            return create_picamera2_capture()
+        except Exception:
+            return create_opencv_capture()
+
+    raise RuntimeError(f"Unsupported CAMERA_BACKEND: {config.CAMERA_BACKEND}")
 
 
 def read_frame(cap):

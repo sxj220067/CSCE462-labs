@@ -1,7 +1,8 @@
 # Configuration parameters for auto trash can vision pipeline
 
 # camera settings
-CAMERA_SOURCE = 0  # 0 for default USB/Webcam, 0 or -1 for PiCamera wrapper (modify if needed)
+CAMERA_BACKEND = "auto"  # "auto", "opencv", or "picamera2"
+CAMERA_SOURCE = 0  # camera index for USB/Webcam when using the OpenCV backend
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 TARGET_FPS = 20

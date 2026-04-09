@@ -1,3 +1,4 @@
+import os
 import time
 import cv2
 
@@ -40,7 +41,14 @@ def main():
     cap = create_capture()
     detector = MotionDetector()
     tracker = ObjectTracker()
-    window_enabled = config.SHOW_WINDOW
+    has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    window_enabled = config.SHOW_WINDOW and has_display
+
+    if config.SHOW_WINDOW and not has_display:
+        print(
+            "No graphical display detected. Continuing without a preview window. "
+            "Set SHOW_WINDOW = False in config.py to suppress this message."
+        )
 
     last_time = time.time()
     fps = 0.0

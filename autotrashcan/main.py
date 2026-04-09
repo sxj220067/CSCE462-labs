@@ -40,6 +40,7 @@ def main():
     cap = create_capture()
     detector = MotionDetector()
     tracker = ObjectTracker()
+    window_enabled = config.SHOW_WINDOW
 
     last_time = time.time()
     fps = 0.0
@@ -96,9 +97,17 @@ def main():
                     2,
                 )
 
-            cv2.imshow(config.WINDOW_NAME, frame)
+            if window_enabled:
+                try:
+                    cv2.imshow(config.WINDOW_NAME, frame)
+                except cv2.error:
+                    window_enabled = False
+                    print(
+                        "OpenCV display is unavailable. Continuing without a preview window. "
+                        "Set SHOW_WINDOW = False in config.py to suppress this message."
+                    )
 
-            key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(1) & 0xFF if window_enabled else -1
             if key == ord('q') or key == 27:
                 break
 

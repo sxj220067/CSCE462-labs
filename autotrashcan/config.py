@@ -1,7 +1,7 @@
 # Configuration parameters for auto trash can vision pipeline
 
 # camera settings
-CAMERA_BACKEND = "auto"  # "auto", "opencv", or "picamera2"
+CAMERA_BACKEND = "picamera2"  # "auto", "opencv", or "picamera2"
 CAMERA_SOURCE = 0  # camera index for USB/Webcam when using the OpenCV backend
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -39,6 +39,7 @@ MOTOR_MOCK = True
 # visual / behavior flags
 DEBUG_DRAW = True
 SHOW_FPS = True
+SHOW_WINDOW = True
 
 # convenience
 WINDOW_NAME = "AutoTrashCan Vision"

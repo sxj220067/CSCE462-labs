@@ -26,6 +26,13 @@ def create_picamera2_capture():
             "sudo apt install -y python3-picamera2"
         ) from exc
 
+    camera_info = Picamera2.global_camera_info()
+    if not camera_info:
+        raise RuntimeError(
+            "No Raspberry Pi cameras detected. Check the ribbon cable, camera overlay, "
+            "and verify detection with: rpicam-hello --list-cameras"
+        )
+
     camera = Picamera2()
     preview_config = camera.create_preview_configuration(
         main={"size": (config.FRAME_WIDTH, config.FRAME_HEIGHT), "format": "BGR888"},
@@ -61,7 +68,8 @@ def create_capture():
     if backend == "auto":
         try:
             return create_picamera2_capture()
-        except Exception:
+        except Exception as picam_error:
+            print(f"Picamera2 unavailable, falling back to OpenCV: {picam_error}")
             return create_opencv_capture()
 
     raise RuntimeError(f"Unsupported CAMERA_BACKEND: {config.CAMERA_BACKEND}")

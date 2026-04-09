@@ -29,13 +29,26 @@ This project is a modular, Python-based vision pipeline for a Raspberry Pi trash
 Install dependencies:
 
 ```bash
-python3 -m pip install opencv-python numpy
+python3 -m pip install -r requirements.txt
+```
+
+If `pip` is not available on your Raspberry Pi, install it first:
+
+```bash
+sudo apt update
+sudo apt install -y python3-pip
+```
+
+If `opencv-python` fails to install from `pip` on Raspberry Pi OS, use the system package instead:
+
+```bash
+sudo apt install -y python3-opencv python3-numpy
 ```
 
 ## Running
 
 ```bash
-cd /Users/harp12/autotrashcan
+cd ~/projects/CSCE462-labs/autotrashcan
 python3 main.py
 ```
 

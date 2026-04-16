@@ -12,6 +12,21 @@ _motor = None
 _motor_init_error = None
 
 
+def _safe_device_call(device, method_name):
+    if device is None:
+        return
+
+    method = getattr(device, method_name, None)
+    if method is None:
+        return
+
+    try:
+        method()
+    except Exception:
+        # Best-effort cleanup: GPIO devices may already be closed during shutdown.
+        pass
+
+
 class L298NMotorController:
     def __init__(self):
         try:
@@ -84,21 +99,21 @@ class L298NMotorController:
         self._drive(True, True, config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY)
 
     def stop(self):
-        self.left_enable.off()
-        self.left_in1.off()
-        self.left_in2.off()
-        self.right_enable.off()
-        self.right_in3.off()
-        self.right_in4.off()
+        _safe_device_call(self.left_enable, "off")
+        _safe_device_call(self.left_in1, "off")
+        _safe_device_call(self.left_in2, "off")
+        _safe_device_call(self.right_enable, "off")
+        _safe_device_call(self.right_in3, "off")
+        _safe_device_call(self.right_in4, "off")
 
     def close(self):
         self.stop()
-        self.left_enable.close()
-        self.left_in1.close()
-        self.left_in2.close()
-        self.right_enable.close()
-        self.right_in3.close()
-        self.right_in4.close()
+        _safe_device_call(self.left_enable, "close")
+        _safe_device_call(self.left_in1, "close")
+        _safe_device_call(self.left_in2, "close")
+        _safe_device_call(self.right_enable, "close")
+        _safe_device_call(self.right_in3, "close")
+        _safe_device_call(self.right_in4, "close")
 
 
 def get_motor_controller():
@@ -125,7 +140,10 @@ def get_motor_controller():
 def cleanup_motor():
     global _motor
     if _motor is not None:
-        _motor.close()
+        try:
+            _motor.close()
+        except Exception:
+            pass
         _motor = None
 
 

@@ -28,20 +28,24 @@ This project is a modular, Python-based vision pipeline for a Raspberry Pi trash
 - `python3-picamera2` for Raspberry Pi Camera modules on Raspberry Pi OS
 - `python3-gpiozero` for L298N motor control on Raspberry Pi OS
 
-Install dependencies:
+Install dependencies in a virtual environment:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 python3 -m pip install -r requirements.txt
 ```
 
-If `pip` is not available on your Raspberry Pi, install it first:
+On current Raspberry Pi OS releases, installing with `pip` directly into the system Python often fails with `error: externally-managed-environment` (PEP 668). Using a virtual environment avoids that issue cleanly.
+
+If `venv` or `pip` is not available on your Raspberry Pi, install them first:
 
 ```bash
 sudo apt update
-sudo apt install -y python3-pip
+sudo apt install -y python3-pip python3-venv
 ```
 
-If `opencv-python` fails to install from `pip` on Raspberry Pi OS, use the system package instead:
+If you prefer to avoid `pip` entirely on Raspberry Pi OS, you can install the main runtime packages from `apt` instead:
 
 ```bash
 sudo apt install -y python3-opencv python3-numpy
@@ -59,10 +63,24 @@ If you are using the included L298N motor driver code, install GPIO Zero:
 sudo apt install -y python3-gpiozero
 ```
 
+Typical Raspberry Pi OS setup:
+
+```bash
+cd ~/projects/CSCE462-labs/autotrashcan
+sudo apt update
+sudo apt install -y python3-venv python3-opencv python3-numpy python3-picamera2 python3-gpiozero
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+If `opencv-python` still fails to install inside the virtual environment, keep using the `apt`-installed `python3-opencv` and `python3-numpy` packages outside the venv instead of forcing `pip` with `--break-system-packages`.
+
 ## Running
 
 ```bash
 cd ~/projects/CSCE462-labs/autotrashcan
+source .venv/bin/activate
 python3 main.py
 ```
 

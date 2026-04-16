@@ -4,9 +4,8 @@ import cv2
 
 import config
 from camera import create_capture, read_frame, release_capture
-from control_interface import compute_move_command, send_motor_command, STOP
+from control_interface import compute_approach_command, send_motor_command, STOP
 from detection import MotionDetector
-from prediction import is_descending, predict_landing_point
 from tracking import ObjectTracker, TrackState
 
 
@@ -83,7 +82,7 @@ def main():
                 tracker.update(None)
                 state = tracker.get_state()
 
-            predicted_point = None
+            aim_point = None
             command = STOP
             offset = 0
             turn_strength = 0.0
@@ -92,23 +91,12 @@ def main():
                 last_bbox = tracker.get_last_bbox()
                 x, y, w, h = last_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
-
-                predicted_point = target_center
-                if (
-                    config.USE_PREDICTION
-                    and len(tracker.get_path()) >= config.MIN_TRACK_POINTS
-                    and (
-                        not config.REQUIRE_DESCENDING_FOR_CHASE
-                        or is_descending(tracker.get_path(), config.TARGET_FPS)
-                    )
-                ):
-                    landing_point = predict_landing_point(
-                        tracker.get_path(), config.FRAME_HEIGHT, config.FRAME_WIDTH, config.TARGET_FPS
-                    )
-                    if landing_point is not None:
-                        predicted_point = landing_point
-
-                command, offset, turn_strength = compute_move_command(predicted_point[0], config.FRAME_WIDTH)
+                aim_point = target_center
+                command, offset, turn_strength = compute_approach_command(
+                    last_bbox,
+                    config.FRAME_WIDTH,
+                    config.FRAME_HEIGHT,
+                )
                 command_hold_frames = config.COMMAND_HOLD_FRAMES
             elif state == TrackState.LOST:
                 command = STOP
@@ -152,7 +140,7 @@ def main():
                 last_status_print = now
 
             if config.DEBUG_DRAW:
-                draw_tracking(frame, tracker, predicted_point)
+                draw_tracking(frame, tracker, aim_point)
                 draw_status(frame, state.name, fps)
                 cv2.line(
                     frame,

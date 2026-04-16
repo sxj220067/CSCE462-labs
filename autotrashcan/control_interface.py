@@ -201,6 +201,29 @@ def compute_move_command(predicted_x, frame_width, deadzone_px=config.CENTER_DEA
     return MOVE_RIGHT, offset, turn_strength
 
 
+def compute_approach_command(target_bbox, frame_width, frame_height):
+    if target_bbox is None:
+        return STOP, 0, 0.0
+
+    x, y, w, h = target_bbox
+    target_center_x = int(x + (w / 2))
+    target_center_y = int(y + (h / 2))
+    bbox_area = w * h
+
+    close_enough = (
+        target_center_y >= int(frame_height * config.TARGET_CLOSE_Y_RATIO)
+        or bbox_area >= config.TARGET_CLOSE_AREA
+    )
+    if close_enough:
+        return STOP, 0, 0.0
+
+    command, offset, turn_strength = compute_move_command(target_center_x, frame_width)
+    if config.APPROACH_ALIGNED_ONLY and command != MOVE_FORWARD:
+        return command, offset, turn_strength
+
+    return MOVE_FORWARD, offset, turn_strength
+
+
 def send_motor_command(command, offset=0, turn_strength=0.0):
     global _motor_warning_printed
 

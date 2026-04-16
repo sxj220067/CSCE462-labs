@@ -144,10 +144,17 @@ def main():
                 draw_status(frame, state.name, fps)
                 cv2.line(
                     frame,
-                    (0, int(config.FRAME_HEIGHT * config.GROUND_LINE_RATIO)),
-                    (config.FRAME_WIDTH, int(config.FRAME_HEIGHT * config.GROUND_LINE_RATIO)),
-                    (128, 128, 128),
-                    2,
+                    (config.FRAME_WIDTH // 2, 0),
+                    (config.FRAME_WIDTH // 2, config.FRAME_HEIGHT),
+                    (0, 255, 0),
+                    1,
+                )
+                cv2.line(
+                    frame,
+                    (0, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
+                    (config.FRAME_WIDTH, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
+                    (0, 255, 0),
+                    1,
                 )
 
             if window_enabled:

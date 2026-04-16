@@ -209,15 +209,20 @@ def compute_approach_command(target_bbox, frame_width, frame_height):
     target_center_x = int(x + (w / 2))
     target_center_y = int(y + (h / 2))
     bbox_area = w * h
+    frame_center_x = frame_width // 2
+    x_offset = target_center_x - frame_center_x
 
-    close_enough = (
+    command, offset, turn_strength = compute_move_command(target_center_x, frame_width)
+
+    close_in_frame = (
         target_center_y >= int(frame_height * config.TARGET_CLOSE_Y_RATIO)
         or bbox_area >= config.TARGET_CLOSE_AREA
     )
-    if close_enough:
+    horizontally_aligned = abs(x_offset) <= config.TARGET_STOP_X_DEADZONE_PX
+
+    if close_in_frame and horizontally_aligned:
         return STOP, 0, 0.0
 
-    command, offset, turn_strength = compute_move_command(target_center_x, frame_width)
     if config.APPROACH_ALIGNED_ONLY and command != MOVE_FORWARD:
         return command, offset, turn_strength
 

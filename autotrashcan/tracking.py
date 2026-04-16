@@ -17,19 +17,21 @@ class ObjectTracker:
         self.lost_frames = 0
         self.locked_frames = 0
         self.reacquire_cooldown = 0
+        self.candidate_count = 0
 
     def update(self, bbox):
-        if self.reacquire_cooldown > 0 and bbox is not None:
+        if self.reacquire_cooldown > 0:
             self.reacquire_cooldown -= 1
 
         if bbox is None:
             self.lost_frames += 1
             if self.lost_frames >= config.TRACK_LOST_MAX_FRAMES:
-                self.state = TrackState.LOST
-                self.centers.clear()
-                self.bboxes.clear()
-                self.locked_frames = 0
-                self.reacquire_cooldown = config.TARGET_REACQUIRE_COOLDOWN_FRAMES
+                if self.state != TrackState.LOST:
+                    self.state = TrackState.LOST
+                    self.centers.clear()
+                    self.bboxes.clear()
+                    self.locked_frames = 0
+                    self.reacquire_cooldown = config.TARGET_REACQUIRE_COOLDOWN_FRAMES
             else:
                 self.state = TrackState.SEARCHING if not self.centers else TrackState.TRACKING
             return
@@ -43,11 +45,12 @@ class ObjectTracker:
         self.state = TrackState.TRACKING
 
     def select_best_candidate(self, candidates):
+        self.candidate_count = len(candidates)
+
         if not candidates:
             return None
 
         if self.reacquire_cooldown > 0 and not self.centers:
-            self.reacquire_cooldown -= 1
             return None
 
         last_center = self.get_center()
@@ -113,3 +116,4 @@ class ObjectTracker:
         self.lost_frames = 0
         self.locked_frames = 0
         self.reacquire_cooldown = 0
+        self.candidate_count = 0

@@ -134,7 +134,8 @@ def main():
             if now - last_status_print >= config.STATUS_PRINT_INTERVAL:
                 print(
                     f"[STATUS] state={state.name} fps={fps:.1f} "
-                    f"tracked_points={len(tracker.get_path())} locked={tracker.is_locked()} "
+                    f"candidates={tracker.candidate_count} tracked_points={len(tracker.get_path())} "
+                    f"locked={tracker.is_locked()} cooldown={tracker.reacquire_cooldown} "
                     f"command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now

@@ -34,12 +34,31 @@ MAX_PREDICT_TIME = 2.2
 # control settings
 CENTER_DEADZONE_PX = 40
 MOVE_SCALE = 1.0  # scalar for speed command
-MOTOR_MOCK = True
+MOTOR_MOCK = False
+MOTOR_DRIVER = "l298n"
+L298N_LEFT_ENABLE_PIN = 18
+L298N_LEFT_IN1_PIN = 23
+L298N_LEFT_IN2_PIN = 24
+L298N_RIGHT_ENABLE_PIN = 13
+L298N_RIGHT_IN3_PIN = 5
+L298N_RIGHT_IN4_PIN = 6
+L298N_PWM_FREQUENCY = 1000
+MOTOR_FORWARD_DUTY = 0.65
+MOTOR_TURN_DUTY = 0.55
+# Motor tuning notes for real hardware:
+# - Increase MOTOR_FORWARD_DUTY if the robot does not move or feels too slow.
+# - Decrease MOTOR_FORWARD_DUTY if the robot moves too fast or overshoots.
+# - Increase MOTOR_TURN_DUTY if turns are too weak or too slow.
+# - Decrease MOTOR_TURN_DUTY if turns are too sharp, jerky, or unstable.
+# - Set LEFT_MOTOR_INVERTED or RIGHT_MOTOR_INVERTED to True if that side spins backward when forward is expected.
+# This project does not use a separate motor calibration file; these config values are the main adjustment points.
+LEFT_MOTOR_INVERTED = False
+RIGHT_MOTOR_INVERTED = False
 
 # visual / behavior flags
 DEBUG_DRAW = True
 SHOW_FPS = True
-SHOW_WINDOW = True
+SHOW_WINDOW = False
 
 # convenience
 WINDOW_NAME = "AutoTrashCan Vision"

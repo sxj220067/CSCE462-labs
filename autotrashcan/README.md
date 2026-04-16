@@ -26,6 +26,7 @@ This project is a modular, Python-based vision pipeline for a Raspberry Pi trash
 - OpenCV
 - NumPy
 - `python3-picamera2` for Raspberry Pi Camera modules on Raspberry Pi OS
+- `python3-gpiozero` for L298N motor control on Raspberry Pi OS
 
 Install dependencies:
 
@@ -52,6 +53,12 @@ If you are using a Raspberry Pi Camera Module connected over CSI, install Picame
 sudo apt install -y python3-picamera2
 ```
 
+If you are using the included L298N motor driver code, install GPIO Zero:
+
+```bash
+sudo apt install -y python3-gpiozero
+```
+
 ## Running
 
 ```bash
@@ -65,8 +72,36 @@ Press `q` or `Esc` to quit.
 - `CAMERA_BACKEND = "auto"` tries `Picamera2` first, then falls back to OpenCV.
 - Use `CAMERA_BACKEND = "picamera2"` for Raspberry Pi Camera modules.
 - Use `CAMERA_BACKEND = "opencv"` with `CAMERA_SOURCE = 0` for USB webcams.
-- `MOTOR_MOCK = True` by default: commands print to console instead of driving motors.
+- `MOTOR_MOCK = False` with the current defaults, so the code will drive an L298N-connected motor.
 - Debug overlays show bounding boxes, centroid trail, predicted landing point, and FPS.
+
+## L298N Hardware Wiring
+Default Raspberry Pi GPIO assignments in `config.py` for a two-motor differential drive:
+
+- `GPIO18` -> `ENA` on the L298N
+- `GPIO23` -> `IN1` on the L298N
+- `GPIO24` -> `IN2` on the L298N
+- `GPIO13` -> `ENB` on the L298N
+- `GPIO5` -> `IN3` on the L298N
+- `GPIO6` -> `IN4` on the L298N
+- Raspberry Pi `GND` -> L298N `GND`
+- Left motor leads -> L298N `OUT1` and `OUT2`
+- Right motor leads -> L298N `OUT3` and `OUT4`
+- External motor power supply -> L298N `12V`/`VIN` and `GND`
+
+Important hardware notes:
+
+- Do not power the motors directly from Raspberry Pi GPIO pins.
+- Share ground between the Raspberry Pi and the L298N.
+- Keep the `ENA` and `ENB` jumpers off if you want PWM speed control from the Raspberry Pi.
+- If one side runs backward when it should go forward, flip that motor's leads or set `LEFT_MOTOR_INVERTED` / `RIGHT_MOTOR_INVERTED` in `config.py`.
+
+Current motion mapping with two motors:
+
+- `MOVE_LEFT`: pivot left by reversing the left motor and driving the right motor forward
+- `MOVE_RIGHT`: pivot right by driving the left motor forward and reversing the right motor
+- `MOVE_FORWARD`: both motors forward at cruising duty cycle
+- `STOP`: both motors off
 
 ## Keys
 - `q`: Quit

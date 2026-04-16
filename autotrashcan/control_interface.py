@@ -6,6 +6,7 @@ import config
 MOVE_LEFT = "MOVE_LEFT"
 MOVE_RIGHT = "MOVE_RIGHT"
 MOVE_FORWARD = "MOVE_FORWARD"
+MOVE_REVERSE = "MOVE_REVERSE"
 STOP = "STOP"
 
 _motor = None
@@ -72,13 +73,16 @@ class L298NMotorController:
             pin_b.on()
         enable.value = duty_cycle
 
+    def _apply_scale(self, duty_cycle, scale):
+        return max(0.0, min(1.0, duty_cycle * scale))
+
     def _drive(self, left_forward, right_forward, left_duty, right_duty):
         self._set_channel(
             self.left_in1,
             self.left_in2,
             self.left_enable,
             left_forward,
-            left_duty,
+            self._apply_scale(left_duty, config.LEFT_MOTOR_SCALE),
             config.LEFT_MOTOR_INVERTED,
         )
         self._set_channel(
@@ -86,7 +90,7 @@ class L298NMotorController:
             self.right_in4,
             self.right_enable,
             right_forward,
-            right_duty,
+            self._apply_scale(right_duty, config.RIGHT_MOTOR_SCALE),
             config.RIGHT_MOTOR_INVERTED,
         )
 
@@ -98,6 +102,9 @@ class L298NMotorController:
 
     def move_forward(self):
         self._drive(True, True, config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY)
+
+    def move_reverse(self):
+        self._drive(False, False, config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY)
 
     def stop(self):
         _safe_device_call(self.left_enable, "off")
@@ -190,6 +197,8 @@ def send_motor_command(command, offset=0):
             motor.move_right()
         elif command == MOVE_FORWARD:
             motor.move_forward()
+        elif command == MOVE_REVERSE:
+            motor.move_reverse()
         else:
             motor.stop()
     except Exception as exc:

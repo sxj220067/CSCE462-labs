@@ -43,13 +43,16 @@ L298N_RIGHT_ENABLE_PIN = 18
 L298N_RIGHT_IN3_PIN = 23
 L298N_RIGHT_IN4_PIN = 24
 L298N_PWM_FREQUENCY = 1000
-MOTOR_FORWARD_DUTY = 0.65
-MOTOR_TURN_DUTY = 0.55
+MOTOR_FORWARD_DUTY = 0.95
+MOTOR_TURN_DUTY = 0.85
+LEFT_MOTOR_SCALE = 1.0
+RIGHT_MOTOR_SCALE = 1.0
 # Motor tuning notes for real hardware:
 # - Increase MOTOR_FORWARD_DUTY if the robot does not move or feels too slow.
 # - Decrease MOTOR_FORWARD_DUTY if the robot moves too fast or overshoots.
 # - Increase MOTOR_TURN_DUTY if turns are too weak or too slow.
 # - Decrease MOTOR_TURN_DUTY if turns are too sharp, jerky, or unstable.
+# - Reduce LEFT_MOTOR_SCALE or RIGHT_MOTOR_SCALE if one side consistently runs faster.
 # - Set LEFT_MOTOR_INVERTED or RIGHT_MOTOR_INVERTED to True if that side spins backward when forward is expected.
 # This project does not use a separate motor calibration file; these config values are the main adjustment points.
 LEFT_MOTOR_INVERTED = False

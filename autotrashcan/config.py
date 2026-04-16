@@ -34,7 +34,7 @@ MAX_PREDICT_TIME = 2.2
 # control settings
 CENTER_DEADZONE_PX = 40
 MOVE_SCALE = 1.0  # scalar for speed command
-MOTOR_MOCK = True
+MOTOR_MOCK = False
 MOTOR_DRIVER = "l298n"
 L298N_LEFT_ENABLE_PIN = 18
 L298N_LEFT_IN1_PIN = 23

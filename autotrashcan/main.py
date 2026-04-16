@@ -28,7 +28,7 @@ def draw_tracking(frame, tracker, predicted_point):
         cv2.circle(frame, predicted_point, 8, (0, 0, 255), 2)
         cv2.putText(
             frame,
-            "Pred",
+            "Aim",
             (predicted_point[0] + 8, predicted_point[1] - 8),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
@@ -88,17 +88,28 @@ def main():
             offset = 0
             turn_strength = 0.0
 
-            if (
-                state == TrackState.TRACKING
-                and len(tracker.get_path()) >= config.MIN_TRACK_POINTS
-                and is_descending(tracker.get_path(), config.TARGET_FPS)
-            ):
-                predicted_point = predict_landing_point(
-                    tracker.get_path(), config.FRAME_HEIGHT, config.FRAME_WIDTH, config.TARGET_FPS
-                )
-                if predicted_point is not None:
-                    command, offset, turn_strength = compute_move_command(predicted_point[0], config.FRAME_WIDTH)
-                    command_hold_frames = config.COMMAND_HOLD_FRAMES
+            if state == TrackState.TRACKING and tracker.get_last_bbox() is not None:
+                last_bbox = tracker.get_last_bbox()
+                x, y, w, h = last_bbox
+                target_center = (int(x + w / 2), int(y + h / 2))
+
+                predicted_point = target_center
+                if (
+                    config.USE_PREDICTION
+                    and len(tracker.get_path()) >= config.MIN_TRACK_POINTS
+                    and (
+                        not config.REQUIRE_DESCENDING_FOR_CHASE
+                        or is_descending(tracker.get_path(), config.TARGET_FPS)
+                    )
+                ):
+                    landing_point = predict_landing_point(
+                        tracker.get_path(), config.FRAME_HEIGHT, config.FRAME_WIDTH, config.TARGET_FPS
+                    )
+                    if landing_point is not None:
+                        predicted_point = landing_point
+
+                command, offset, turn_strength = compute_move_command(predicted_point[0], config.FRAME_WIDTH)
+                command_hold_frames = config.COMMAND_HOLD_FRAMES
             elif state == TrackState.LOST:
                 command = STOP
                 command_hold_frames = 0

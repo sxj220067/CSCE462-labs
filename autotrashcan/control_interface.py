@@ -10,6 +10,7 @@ STOP = "STOP"
 
 _motor = None
 _motor_init_error = None
+_motor_warning_printed = False
 
 
 def _safe_device_call(device, method_name):
@@ -167,19 +168,35 @@ def compute_move_command(predicted_x, frame_width, deadzone_px=config.CENTER_DEA
 
 
 def send_motor_command(command, offset=0):
+    global _motor_warning_printed
+
     if config.MOTOR_MOCK:
         print(f"[MOTOR_STUB] {command} offset={offset}")
         return True
 
-    motor = get_motor_controller()
+    try:
+        motor = get_motor_controller()
+    except Exception as exc:
+        if not _motor_warning_printed:
+            print(f"Motor controller unavailable, falling back to stub output: {exc}")
+            _motor_warning_printed = True
+        print(f"[MOTOR_STUB] {command} offset={offset}")
+        return False
 
-    if command == MOVE_LEFT:
-        motor.move_left()
-    elif command == MOVE_RIGHT:
-        motor.move_right()
-    elif command == MOVE_FORWARD:
-        motor.move_forward()
-    else:
-        motor.stop()
+    try:
+        if command == MOVE_LEFT:
+            motor.move_left()
+        elif command == MOVE_RIGHT:
+            motor.move_right()
+        elif command == MOVE_FORWARD:
+            motor.move_forward()
+        else:
+            motor.stop()
+    except Exception as exc:
+        if not _motor_warning_printed:
+            print(f"Motor command failed, falling back to stub output: {exc}")
+            _motor_warning_printed = True
+        print(f"[MOTOR_STUB] {command} offset={offset}")
+        return False
 
     return True

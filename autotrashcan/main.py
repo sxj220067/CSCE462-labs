@@ -43,12 +43,18 @@ def main():
     tracker = ObjectTracker()
     has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
     window_enabled = config.SHOW_WINDOW and has_display
+    last_status_print = time.time()
 
     if config.SHOW_WINDOW and not has_display:
         print(
             "No graphical display detected. Continuing without a preview window. "
             "Set SHOW_WINDOW = False in config.py to suppress this message."
         )
+
+    print(
+        f"AutoTrashCan starting: backend={config.CAMERA_BACKEND}, "
+        f"window={'on' if window_enabled else 'off'}, motor_mock={config.MOTOR_MOCK}"
+    )
 
     last_time = time.time()
     fps = 0.0
@@ -93,6 +99,13 @@ def main():
                 fps = frame_count / (now - last_time)
                 frame_count = 0
                 last_time = now
+
+            if now - last_status_print >= config.STATUS_PRINT_INTERVAL:
+                print(
+                    f"[STATUS] state={state.name} fps={fps:.1f} "
+                    f"tracked_points={len(tracker.get_path())} command={command}"
+                )
+                last_status_print = now
 
             if config.DEBUG_DRAW:
                 draw_tracking(frame, tracker, predicted_point)

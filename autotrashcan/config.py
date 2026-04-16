@@ -52,7 +52,7 @@ MOTOR_TURN_DUTY = 0.55
 # - Decrease MOTOR_TURN_DUTY if turns are too sharp, jerky, or unstable.
 # - Set LEFT_MOTOR_INVERTED or RIGHT_MOTOR_INVERTED to True if that side spins backward when forward is expected.
 # This project does not use a separate motor calibration file; these config values are the main adjustment points.
-LEFT_MOTOR_INVERTED = True
+LEFT_MOTOR_INVERTED = False
 RIGHT_MOTOR_INVERTED = True
 
 # visual / behavior flags

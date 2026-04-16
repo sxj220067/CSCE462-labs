@@ -76,6 +76,26 @@ class L298NMotorController:
     def _apply_scale(self, duty_cycle, scale):
         return max(0.0, min(1.0, duty_cycle * scale))
 
+    def _steer(self, direction, turn_strength):
+        turn_strength = max(config.MIN_TURN_STRENGTH, min(config.MAX_TURN_STRENGTH, turn_strength))
+        outer_duty = config.MOTOR_TURN_DUTY
+        arc_ratio = max(0.0, 1.0 - turn_strength)
+        inner_forward_duty = outer_duty * config.TURN_FORWARD_BIAS * arc_ratio
+        reverse_threshold = 0.75
+
+        if turn_strength >= reverse_threshold:
+            reverse_ratio = (turn_strength - reverse_threshold) / max(1.0 - reverse_threshold, 1e-6)
+            inner_forward = False
+            inner_duty = outer_duty * reverse_ratio
+        else:
+            inner_forward = True
+            inner_duty = inner_forward_duty
+
+        if direction == MOVE_LEFT:
+            self._drive(inner_forward, True, inner_duty, outer_duty)
+        else:
+            self._drive(True, inner_forward, outer_duty, inner_duty)
+
     def _drive(self, left_forward, right_forward, left_duty, right_duty):
         self._set_channel(
             self.left_in1,
@@ -160,25 +180,32 @@ atexit.register(cleanup_motor)
 
 def compute_move_command(predicted_x, frame_width, deadzone_px=config.CENTER_DEADZONE_PX):
     if predicted_x is None:
-        return STOP, 0
+        return STOP, 0, 0.0
 
     center_x = frame_width // 2
     offset = int(predicted_x - center_x)
+    max_offset = max(frame_width // 2, 1)
+    normalized_offset = min(1.0, abs(offset) / float(max_offset))
 
     if abs(offset) <= deadzone_px:
-        return MOVE_FORWARD, 0
+        return MOVE_FORWARD, 0, 0.0
+
+    turn_strength = config.MIN_TURN_STRENGTH + (
+        (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH) * normalized_offset
+    )
+    turn_strength = max(config.MIN_TURN_STRENGTH, min(config.MAX_TURN_STRENGTH, turn_strength))
 
     if offset < 0:
-        return MOVE_LEFT, offset
+        return MOVE_LEFT, offset, turn_strength
 
-    return MOVE_RIGHT, offset
+    return MOVE_RIGHT, offset, turn_strength
 
 
-def send_motor_command(command, offset=0):
+def send_motor_command(command, offset=0, turn_strength=0.0):
     global _motor_warning_printed
 
     if config.MOTOR_MOCK:
-        print(f"[MOTOR_STUB] {command} offset={offset}")
+        print(f"[MOTOR_STUB] {command} offset={offset} strength={turn_strength:.2f}")
         return True
 
     try:
@@ -187,14 +214,14 @@ def send_motor_command(command, offset=0):
         if not _motor_warning_printed:
             print(f"Motor controller unavailable, falling back to stub output: {exc}")
             _motor_warning_printed = True
-        print(f"[MOTOR_STUB] {command} offset={offset}")
+        print(f"[MOTOR_STUB] {command} offset={offset} strength={turn_strength:.2f}")
         return False
 
     try:
         if command == MOVE_LEFT:
-            motor.move_left()
+            motor._steer(MOVE_LEFT, turn_strength)
         elif command == MOVE_RIGHT:
-            motor.move_right()
+            motor._steer(MOVE_RIGHT, turn_strength)
         elif command == MOVE_FORWARD:
             motor.move_forward()
         elif command == MOVE_REVERSE:
@@ -205,7 +232,7 @@ def send_motor_command(command, offset=0):
         if not _motor_warning_printed:
             print(f"Motor command failed, falling back to stub output: {exc}")
             _motor_warning_printed = True
-        print(f"[MOTOR_STUB] {command} offset={offset}")
+        print(f"[MOTOR_STUB] {command} offset={offset} strength={turn_strength:.2f}")
         return False
 
     return True

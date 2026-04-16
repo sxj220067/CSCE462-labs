@@ -59,6 +59,11 @@ def main():
     last_time = time.time()
     fps = 0.0
     frame_count = 0
+    last_command = STOP
+    last_offset = 0
+    last_turn_strength = 0.0
+    last_command_sent_time = 0.0
+    command_hold_frames = 0
 
     try:
         while True:
@@ -81,6 +86,7 @@ def main():
             predicted_point = None
             command = STOP
             offset = 0
+            turn_strength = 0.0
 
             if (
                 state == TrackState.TRACKING
@@ -91,13 +97,34 @@ def main():
                     tracker.get_path(), config.FRAME_HEIGHT, config.FRAME_WIDTH, config.TARGET_FPS
                 )
                 if predicted_point is not None:
-                    command, offset = compute_move_command(predicted_point[0], config.FRAME_WIDTH)
-                    send_motor_command(command, offset)
+                    command, offset, turn_strength = compute_move_command(predicted_point[0], config.FRAME_WIDTH)
+                    command_hold_frames = config.COMMAND_HOLD_FRAMES
             elif state == TrackState.LOST:
                 command = STOP
-                send_motor_command(command, 0)
+                command_hold_frames = 0
+
+            if command == STOP and command_hold_frames > 0 and last_command != STOP:
+                command = last_command
+                offset = last_offset
+                turn_strength = last_turn_strength
+                command_hold_frames -= 1
 
             now = time.time()
+
+            should_send_command = (
+                command != last_command
+                or abs(offset - last_offset) > config.CENTER_DEADZONE_PX
+                or abs(turn_strength - last_turn_strength) >= 0.1
+                or (now - last_command_sent_time) >= config.COMMAND_UPDATE_INTERVAL_S
+            )
+
+            if should_send_command:
+                send_motor_command(command, offset, turn_strength)
+                last_command = command
+                last_offset = offset
+                last_turn_strength = turn_strength
+                last_command_sent_time = now
+
             frame_count += 1
             if now - last_time >= 1.0:
                 fps = frame_count / (now - last_time)
@@ -107,7 +134,8 @@ def main():
             if now - last_status_print >= config.STATUS_PRINT_INTERVAL:
                 print(
                     f"[STATUS] state={state.name} fps={fps:.1f} "
-                    f"tracked_points={len(tracker.get_path())} command={command}"
+                    f"tracked_points={len(tracker.get_path())} locked={tracker.is_locked()} "
+                    f"command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now
 

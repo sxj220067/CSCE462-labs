@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 import config
 
 
@@ -20,7 +19,7 @@ class MotionDetector:
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        fg_mask = self.background_subtractor.apply(gray)
+        fg_mask = self.background_subtractor.apply(gray, learningRate=config.MOG_LEARNING_RATE)
         fg_mask = cv2.GaussianBlur(fg_mask, config.BLUR_SIZE, 0)
         _, thresh = cv2.threshold(fg_mask, config.THRESHOLD_VALUE, 255, cv2.THRESH_BINARY)
 
@@ -28,6 +27,9 @@ class MotionDetector:
         cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, self.kernel)
 
         contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        frame_height, frame_width = frame.shape[:2]
+        search_top = int(frame_height * config.SEARCH_TOP_RATIO)
+        search_bottom = int(frame_height * config.SEARCH_BOTTOM_RATIO)
 
         candidates = []
         for cnt in contours:
@@ -40,7 +42,17 @@ class MotionDetector:
             if aspect_ratio < config.ASPECT_RATIO_MIN or aspect_ratio > config.ASPECT_RATIO_MAX:
                 continue
 
-            candidates.append((cnt, area, (x, y, w, h)))
+            cx = x + w / 2.0
+            cy = y + h / 2.0
+            if cy < search_top or cy > search_bottom:
+                continue
+            if x <= config.EDGE_IGNORE_PX or (x + w) >= (frame_width - config.EDGE_IGNORE_PX):
+                continue
+
+            center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)
+            upper_bias = 1.0 - ((cy - search_top) / max(search_bottom - search_top, 1.0))
+            score = area + (250.0 * center_bias) + (150.0 * upper_bias)
+            candidates.append((cnt, score, (x, y, w, h)))
 
         candidates.sort(key=lambda item: item[1], reverse=True)
         candidates = candidates[: config.MAX_CANDIDATES]
@@ -48,6 +60,4 @@ class MotionDetector:
         if not candidates:
             return cleaned, thresh, []
 
-        # primary target: largest candidate
-        best_cnt, best_area, best_bbox = candidates[0]
-        return cleaned, thresh, [(best_cnt, best_bbox)]
+        return cleaned, thresh, [(cnt, bbox) for cnt, _, bbox in candidates]

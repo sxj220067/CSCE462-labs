@@ -20,6 +20,14 @@ def estimate_velocity(points, fps):
     return vx, vy
 
 
+def is_descending(points, fps):
+    if len(points) < 2 or fps <= 0:
+        return False
+
+    _, vy = estimate_velocity(points, fps)
+    return vy >= config.MIN_DOWNWARD_VELOCITY_PX_PER_S
+
+
 def predict_landing_point(points, frame_height, frame_width, fps):
     if len(points) < config.MIN_TRACK_POINTS:
         return None

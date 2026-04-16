@@ -6,7 +6,7 @@ import config
 from camera import create_capture, read_frame, release_capture
 from control_interface import compute_move_command, send_motor_command, STOP
 from detection import MotionDetector
-from prediction import predict_landing_point
+from prediction import is_descending, predict_landing_point
 from tracking import ObjectTracker, TrackState
 
 
@@ -71,7 +71,7 @@ def main():
             state = tracker.get_state()
 
             if candidates:
-                _, best_bbox = candidates[0]
+                best_bbox = tracker.select_best_candidate(candidates)
                 tracker.update(best_bbox)
                 state = tracker.get_state()
             else:
@@ -82,7 +82,11 @@ def main():
             command = STOP
             offset = 0
 
-            if state == TrackState.TRACKING and len(tracker.get_path()) >= config.MIN_TRACK_POINTS:
+            if (
+                state == TrackState.TRACKING
+                and len(tracker.get_path()) >= config.MIN_TRACK_POINTS
+                and is_descending(tracker.get_path(), config.TARGET_FPS)
+            ):
                 predicted_point = predict_landing_point(
                     tracker.get_path(), config.FRAME_HEIGHT, config.FRAME_WIDTH, config.TARGET_FPS
                 )

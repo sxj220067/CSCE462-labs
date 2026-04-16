@@ -34,6 +34,35 @@ class ObjectTracker:
         self.lost_frames = 0
         self.state = TrackState.TRACKING
 
+    def select_best_candidate(self, candidates):
+        if not candidates:
+            return None
+
+        last_center = self.get_center()
+        best_bbox = None
+        best_score = None
+
+        for _, bbox in candidates:
+            x, y, w, h = bbox
+            center = (int(x + w / 2), int(y + h / 2))
+            area = w * h
+
+            if last_center is None:
+                score = area - (y * 2)
+            else:
+                dx = center[0] - last_center[0]
+                dy = center[1] - last_center[1]
+                distance_sq = dx * dx + dy * dy
+                if distance_sq > (config.MAX_TRACK_JUMP_PX * config.MAX_TRACK_JUMP_PX):
+                    continue
+                score = area + config.TARGET_LOCK_BONUS - distance_sq
+
+            if best_score is None or score > best_score:
+                best_score = score
+                best_bbox = bbox
+
+        return best_bbox
+
     def get_state(self):
         if self.state == TrackState.TRACKING and len(self.centers) < 2:
             return TrackState.SEARCHING

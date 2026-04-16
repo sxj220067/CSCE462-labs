@@ -29,11 +29,10 @@ class MotionDetector:
         fg_mask = cv2.GaussianBlur(fg_mask, config.BLUR_SIZE, 0)
         _, thresh = cv2.threshold(fg_mask, config.THRESHOLD_VALUE, 255, cv2.THRESH_BINARY)
 
-        cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, self.kernel)
-        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, self.kernel)
-        cleaned = cv2.bitwise_and(cleaned, target_mask)
+        motion_mask = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, self.kernel)
+        motion_mask = cv2.morphologyEx(motion_mask, cv2.MORPH_OPEN, self.kernel)
 
-        contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         frame_height, frame_width = frame.shape[:2]
         search_top = int(frame_height * config.SEARCH_TOP_RATIO)
         search_bottom = int(frame_height * config.SEARCH_BOTTOM_RATIO)
@@ -56,6 +55,10 @@ class MotionDetector:
             if target_pixels < config.MIN_TARGET_PIXELS or target_ratio < config.MIN_TARGET_RATIO:
                 continue
 
+            motion_roi = motion_mask[y : y + h, x : x + w]
+            motion_pixels = cv2.countNonZero(motion_roi)
+            motion_ratio = motion_pixels / float(bbox_area)
+
             cx = x + w / 2.0
             cy = y + h / 2.0
             if cy < search_top or cy > search_bottom:
@@ -65,13 +68,19 @@ class MotionDetector:
 
             center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)
             upper_bias = 1.0 - ((cy - search_top) / max(search_bottom - search_top, 1.0))
-            score = area + (250.0 * center_bias) + (150.0 * upper_bias) + (target_ratio * 500.0)
+            score = (
+                area
+                + (250.0 * center_bias)
+                + (150.0 * upper_bias)
+                + (target_ratio * 500.0)
+                + (motion_ratio * 350.0)
+            )
             candidates.append((cnt, score, (x, y, w, h)))
 
         candidates.sort(key=lambda item: item[1], reverse=True)
         candidates = candidates[: config.MAX_CANDIDATES]
 
         if not candidates:
-            return cleaned, thresh, []
+            return target_mask, motion_mask, []
 
-        return cleaned, thresh, [(cnt, bbox) for cnt, _, bbox in candidates]
+        return target_mask, motion_mask, [(cnt, bbox) for cnt, _, bbox in candidates]

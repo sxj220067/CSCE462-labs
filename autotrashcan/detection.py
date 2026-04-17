@@ -50,9 +50,9 @@ class MotionDetector:
             (r_channel >= config.MIN_YELLOW_RED_CHANNEL)
             & (g_channel >= config.MIN_YELLOW_GREEN_CHANNEL)
             & (b_channel <= config.MAX_YELLOW_BLUE_CHANNEL)
-            & (np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)) <= config.YELLOW_DOMINANCE_DELTA)
-            & ((r_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.YELLOW_DOMINANCE_DELTA)
-            & ((g_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.YELLOW_DOMINANCE_DELTA)
+            & (np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)) <= config.YELLOW_RG_BALANCE_DELTA)
+            & ((r_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.YELLOW_BLUE_GAP)
+            & ((g_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.YELLOW_BLUE_GAP)
         )
 
         score = (

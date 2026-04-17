@@ -230,9 +230,14 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     center_y = frame_height // 2
     dx = int(target_point[0] - center_x)
     dy = int(target_point[1] - center_y)
-    radial_error = math.hypot(dx, dy)
+    stop_dx = dx
+    stop_dy = dy - config.OVERHEAD_STOP_Y_OFFSET_PX
+    stop_error = math.hypot(stop_dx, stop_dy)
 
-    if radial_error <= config.OVERHEAD_CENTER_RADIUS_PX:
+    if (
+        abs(stop_dx) <= config.OVERHEAD_AXIS_DEADZONE_PX
+        and abs(stop_dy) <= config.OVERHEAD_STOP_Y_TOLERANCE_PX
+    ) or stop_error <= config.OVERHEAD_CENTER_RADIUS_PX:
         return STOP, 0, 0.0
 
     heading_angle_deg = math.degrees(math.atan2(dx, -dy))
@@ -251,7 +256,7 @@ def compute_overhead_command(target_point, frame_width, frame_height):
         config.OVERHEAD_APPROACH_SLOWDOWN_RADIUS_PX,
         config.OVERHEAD_CENTER_RADIUS_PX + 1,
     )
-    approach_scale = min(1.0, radial_error / float(max(slowdown_radius, 1)))
+    approach_scale = min(1.0, stop_error / float(max(slowdown_radius, 1)))
     approach_scale = max(config.OVERHEAD_APPROACH_MIN_SPEED_SCALE, approach_scale)
     lateral_ratio = min(1.0, abs(dx) / max(frame_width / 2.0, 1.0))
     approach_turn_strength = config.OVERHEAD_ARC_TURN_MIN_STRENGTH + (
@@ -261,10 +266,10 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     if abs(dx) <= config.OVERHEAD_AXIS_DEADZONE_PX:
         approach_turn_strength = 0.0
 
-    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
+    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
         return MOVE_FORWARD, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 
-    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
+    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
         if config.OVERHEAD_REVERSE_ENABLED:
             return MOVE_REVERSE, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 

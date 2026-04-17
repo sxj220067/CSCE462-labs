@@ -6,7 +6,7 @@ import config
 from camera import create_capture, read_frame, release_capture
 from control_interface import compute_path_command, plan_path_to_target, send_motor_command, STOP
 from detection import create_detector
-from prediction import predict_landing_point
+from prediction import is_descending, predict_landing_point
 from tracking import ObjectTracker, TrackState
 
 
@@ -109,25 +109,28 @@ def main():
                 x, y, w, h = current_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
                 aim_point = target_center
+                predicted_point = None
 
                 if config.USE_PREDICTION and len(tracker.get_path()) >= config.MIN_TRACK_POINTS:
-                    predicted_point = predict_landing_point(
-                        tracker.get_path(),
-                        config.FRAME_HEIGHT,
+                    if not config.REQUIRE_DESCENDING_FOR_CHASE or is_descending(tracker.get_path(), fps):
+                        predicted_point = predict_landing_point(
+                            tracker.get_path(),
+                            config.FRAME_HEIGHT,
+                            config.FRAME_WIDTH,
+                            fps,
+                        )
+
+                if predicted_point is not None:
+                    aim_point = predicted_point
+                    planned_path = plan_path_to_target(aim_point, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+                    command, offset, turn_strength = compute_path_command(
+                        planned_path,
                         config.FRAME_WIDTH,
-                        fps,
+                        config.FRAME_HEIGHT,
+                        target_bbox=current_bbox,
                     )
-                    if predicted_point is not None:
-                        aim_point = predicted_point
-
-                planned_path = plan_path_to_target(aim_point, config.FRAME_WIDTH, config.FRAME_HEIGHT)
-
-                command, offset, turn_strength = compute_path_command(
-                    planned_path,
-                    config.FRAME_WIDTH,
-                    config.FRAME_HEIGHT,
-                    target_bbox=current_bbox,
-                )
+                else:
+                    command = STOP
             else:
                 command = STOP
 

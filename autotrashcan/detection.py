@@ -8,6 +8,13 @@ class MotionDetector:
 
     def __init__(self):
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, config.MORPH_KERNEL)
+        self.motion_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, config.MOTION_MORPH_KERNEL)
+        self.bg_subtractor = cv2.createBackgroundSubtractorMOG2(
+            history=config.MOG_HISTORY,
+            varThreshold=config.MOG_VAR_THRESHOLD,
+            detectShadows=config.MOG_DETECT_SHADOWS,
+        )
+        self.frame_count = 0
         if hasattr(config, "TARGET_HSV_RANGES"):
             self.target_ranges = tuple(config.TARGET_HSV_RANGES)
         else:
@@ -16,6 +23,8 @@ class MotionDetector:
     def detect(self, frame):
         if frame is None:
             return None, None, []
+
+        self.frame_count += 1
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         target_mask = None
@@ -28,10 +37,22 @@ class MotionDetector:
         target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, self.kernel)
         target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_CLOSE, self.kernel)
 
+        learning_rate = config.MOG_LEARNING_RATE
+        if self.frame_count <= config.MOTION_WARMUP_FRAMES:
+            learning_rate = -1
+
+        motion_mask = self.bg_subtractor.apply(frame, learningRate=learning_rate)
+        _, motion_mask = cv2.threshold(motion_mask, config.THRESHOLD_VALUE, 255, cv2.THRESH_BINARY)
+        motion_mask = cv2.morphologyEx(motion_mask, cv2.MORPH_OPEN, self.motion_kernel)
+        motion_mask = cv2.morphologyEx(motion_mask, cv2.MORPH_CLOSE, self.motion_kernel)
+
         contours, _ = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         frame_height, frame_width = frame.shape[:2]
         search_top = int(frame_height * config.SEARCH_TOP_RATIO)
         search_bottom = int(frame_height * config.SEARCH_BOTTOM_RATIO)
+
+        if self.frame_count <= config.MOTION_WARMUP_FRAMES:
+            return motion_mask, target_mask, []
 
         candidates = []
         for cnt in contours:
@@ -58,14 +79,20 @@ class MotionDetector:
             if target_pixels < config.MIN_TARGET_PIXELS or target_ratio < config.MIN_TARGET_RATIO:
                 continue
 
+            motion_bbox = motion_mask[y : y + h, x : x + w]
+            motion_pixels = cv2.countNonZero(motion_bbox)
+            motion_overlap = motion_pixels / float(bbox_area)
+            if motion_pixels < config.MIN_MOTION_PIXELS or motion_overlap < config.MIN_MOTION_OVERLAP_RATIO:
+                continue
+
             center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)
-            score = area + (target_ratio * 600.0) + (center_bias * 120.0)
+            score = area + (target_ratio * 600.0) + (motion_overlap * 800.0) + (center_bias * 120.0)
             candidates.append((cnt, score, (x, y, w, h)))
 
         candidates.sort(key=lambda item: item[1], reverse=True)
         candidates = candidates[: config.MAX_CANDIDATES]
 
         if not candidates:
-            return target_mask, target_mask, []
+            return motion_mask, target_mask, []
 
-        return target_mask, target_mask, [(cnt, bbox) for cnt, _, bbox in candidates]
+        return motion_mask, target_mask, [(cnt, bbox) for cnt, _, bbox in candidates]

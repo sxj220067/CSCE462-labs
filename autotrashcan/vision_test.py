@@ -78,7 +78,7 @@ def main():
             if frame is None:
                 continue
 
-            target_mask, _, candidates = detector.detect(frame)
+            motion_mask, target_mask, candidates = detector.detect(frame)
             bbox = candidates[0][1] if candidates else None
             status_text, horizontal = describe_position(bbox, config.FRAME_WIDTH, config.FRAME_HEIGHT)
 
@@ -146,6 +146,8 @@ def main():
                 cv2.imshow("AutoTrashCan Vision Test", frame)
                 mask_bgr = cv2.cvtColor(target_mask, cv2.COLOR_GRAY2BGR)
                 cv2.imshow("AutoTrashCan Target Mask", mask_bgr)
+                motion_bgr = cv2.cvtColor(motion_mask, cv2.COLOR_GRAY2BGR)
+                cv2.imshow("AutoTrashCan Motion Mask", motion_bgr)
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q") or key == 27:
                     break

@@ -105,8 +105,6 @@ class MotionDetector:
             cy = y + h / 2.0
             if cy < search_top or cy > search_bottom:
                 continue
-            if x <= config.EDGE_IGNORE_PX or (x + w) >= (frame_width - config.EDGE_IGNORE_PX):
-                continue
 
             bbox_mask = target_mask[y : y + h, x : x + w]
             target_pixels = cv2.countNonZero(bbox_mask)
@@ -126,12 +124,17 @@ class MotionDetector:
                 continue
 
             center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)
+            edge_distance = min(x, frame_width - (x + w))
+            edge_penalty = 0.0
+            if edge_distance < config.EDGE_PENALTY_MARGIN_PX:
+                edge_penalty = (config.EDGE_PENALTY_MARGIN_PX - edge_distance) * 8.0
             score = (
                 area
                 + (target_ratio * 650.0)
                 + (motion_overlap * 850.0)
                 + (color_confidence * 700.0)
                 + (center_bias * 120.0)
+                - edge_penalty
             )
             candidates.append((cnt, score, (x, y, w, h)))
 
@@ -256,8 +259,6 @@ class ObjectDetector:
             cy = y + h / 2.0
             if cy < search_top or cy > search_bottom:
                 continue
-            if x <= config.EDGE_IGNORE_PX or (x + w) >= (frame_width - config.EDGE_IGNORE_PX):
-                continue
 
             motion_bbox = motion_mask[y : y + h, x : x + w]
             motion_pixels = cv2.countNonZero(motion_bbox)
@@ -268,7 +269,17 @@ class ObjectDetector:
 
             cv2.rectangle(target_mask, (x, y), (x + w, y + h), 255, -1)
             center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)
-            score = area + (float(confidence) * 1600.0) + (motion_overlap * 900.0) + (center_bias * 120.0)
+            edge_distance = min(x, frame_width - (x + w))
+            edge_penalty = 0.0
+            if edge_distance < config.EDGE_PENALTY_MARGIN_PX:
+                edge_penalty = (config.EDGE_PENALTY_MARGIN_PX - edge_distance) * 8.0
+            score = (
+                area
+                + (float(confidence) * 1600.0)
+                + (motion_overlap * 900.0)
+                + (center_bias * 120.0)
+                - edge_penalty
+            )
             candidates.append((None, score, (x, y, w, h)))
 
         candidates.sort(key=lambda item: item[1], reverse=True)

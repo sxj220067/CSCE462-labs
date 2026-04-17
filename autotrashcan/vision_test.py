@@ -28,9 +28,9 @@ def describe_position(bbox, frame_width, frame_height):
         else:
             horizontal = "centered-x"
 
-        if y_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
+        if y_offset > config.OVERHEAD_AXIS_DEADZONE_PX:
             vertical = "ahead"
-        elif y_offset > config.OVERHEAD_AXIS_DEADZONE_PX:
+        elif y_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
             vertical = "behind"
         else:
             vertical = "centered-y"

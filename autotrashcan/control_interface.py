@@ -247,10 +247,10 @@ def compute_overhead_command(target_point, frame_width, frame_height):
             return MOVE_LEFT, dx, turn_strength
         return MOVE_RIGHT, dx, turn_strength
 
-    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
+    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
         return MOVE_FORWARD, dy, 0.0
 
-    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
+    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
         if config.OVERHEAD_REVERSE_ENABLED:
             return MOVE_REVERSE, dy, 0.0
 

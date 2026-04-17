@@ -42,19 +42,22 @@ class MotionDetector:
 
         hsv_mask = self._build_hsv_range_mask(hsv, self.target_ranges)
 
-        sat_gate = sat >= config.HSV_GREEN_MIN_SAT
-        val_gate = val >= config.HSV_GREEN_MIN_VAL
+        sat_gate = sat >= config.HSV_YELLOW_MIN_SAT
+        val_gate = val >= config.HSV_YELLOW_MIN_VAL
         hsv_gate = (hsv_mask > 0) & sat_gate & val_gate
 
-        green_dominance_mask = (
-            (g_channel >= config.MIN_GREEN_CHANNEL)
-            & ((g_channel.astype(np.int16) - r_channel.astype(np.int16)) >= config.GREEN_DOMINANCE_DELTA)
-            & ((g_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.GREEN_DOMINANCE_DELTA)
+        yellow_dominance_mask = (
+            (r_channel >= config.MIN_YELLOW_RED_CHANNEL)
+            & (g_channel >= config.MIN_YELLOW_GREEN_CHANNEL)
+            & (b_channel <= config.MAX_YELLOW_BLUE_CHANNEL)
+            & (np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)) <= config.YELLOW_DOMINANCE_DELTA)
+            & ((r_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.YELLOW_DOMINANCE_DELTA)
+            & ((g_channel.astype(np.int16) - b_channel.astype(np.int16)) >= config.YELLOW_DOMINANCE_DELTA)
         )
 
         score = (
             hsv_gate.astype(np.uint8)
-            + green_dominance_mask.astype(np.uint8)
+            + yellow_dominance_mask.astype(np.uint8)
         )
         combined_mask = np.where(score >= config.TARGET_BLEND_MIN_SCORE, 255, 0).astype(np.uint8)
 

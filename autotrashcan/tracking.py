@@ -13,6 +13,8 @@ class ObjectTracker:
     def __init__(self):
         self.centers = deque(maxlen=config.TRACK_HISTORY)
         self.bboxes = deque(maxlen=config.TRACK_HISTORY)
+        self.remembered_center = None
+        self.remembered_bbox = None
         self.state = TrackState.SEARCHING
         self.lost_frames = 0
         self.locked_frames = 0
@@ -40,6 +42,8 @@ class ObjectTracker:
         center = (int(x + w / 2), int(y + h / 2))
         self.centers.append(center)
         self.bboxes.append(bbox)
+        self.remembered_center = center
+        self.remembered_bbox = bbox
         self.lost_frames = 0
         self.locked_frames += 1
         self.state = TrackState.TRACKING
@@ -131,13 +135,17 @@ class ObjectTracker:
         return self.state
 
     def get_center(self):
-        return self.centers[-1] if self.centers else None
+        if self.centers:
+            return self.centers[-1]
+        return self.remembered_center
 
     def get_path(self):
         return list(self.centers)
 
     def get_last_bbox(self):
-        return self.bboxes[-1] if self.bboxes else None
+        if self.bboxes:
+            return self.bboxes[-1]
+        return self.remembered_bbox
 
     def is_tracking(self):
         return self.get_state() == TrackState.TRACKING
@@ -145,6 +153,8 @@ class ObjectTracker:
     def reset(self):
         self.centers.clear()
         self.bboxes.clear()
+        self.remembered_center = None
+        self.remembered_bbox = None
         self.state = TrackState.SEARCHING
         self.lost_frames = 0
         self.locked_frames = 0

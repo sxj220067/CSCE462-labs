@@ -10,6 +10,21 @@ from camera import create_capture, read_frame, release_capture
 WINDOW_NAME = "AutoTrashCan Camera View"
 
 
+def enhance_preview(frame):
+    if not config.CAMERA_VIEW_SHARPEN:
+        return frame
+
+    blurred = cv2.GaussianBlur(frame, (0, 0), config.CAMERA_VIEW_SHARPEN_SIGMA)
+    sharpened = cv2.addWeighted(
+        frame,
+        1.0 + config.CAMERA_VIEW_SHARPEN_AMOUNT,
+        blurred,
+        -config.CAMERA_VIEW_SHARPEN_AMOUNT,
+        0,
+    )
+    return sharpened
+
+
 def draw_overlay(frame, fps):
     frame_height, frame_width = frame.shape[:2]
     center_x = frame_width // 2
@@ -64,6 +79,13 @@ def main():
             if frame is None:
                 print("Warning: empty frame from camera")
                 continue
+
+            frame = enhance_preview(frame)
+            if (
+                frame.shape[1] != config.CAMERA_VIEW_WIDTH
+                or frame.shape[0] != config.CAMERA_VIEW_HEIGHT
+            ):
+                frame = cv2.resize(frame, (config.CAMERA_VIEW_WIDTH, config.CAMERA_VIEW_HEIGHT))
 
             now = time.time()
             frame_count += 1

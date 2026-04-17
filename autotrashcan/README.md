@@ -101,6 +101,7 @@ Current camera tuning is set up for an OV5647-style 5MP module:
 - processing stream: `960x540`
 
 This keeps the preview sharp while avoiding a large FPS hit in the vision pipeline.
+The preview window also applies optional display-only sharpening, which can make edges easier to inspect but will not fix a physically out-of-focus lens.
 
 ## Preconfigured behavior
 - `CAMERA_BACKEND = "auto"` tries `Picamera2` first, then falls back to OpenCV.

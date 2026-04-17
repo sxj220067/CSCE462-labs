@@ -247,12 +247,19 @@ def compute_overhead_command(target_point, frame_width, frame_height):
             return MOVE_LEFT, dx, turn_strength
         return MOVE_RIGHT, dx, turn_strength
 
+    slowdown_radius = max(
+        config.OVERHEAD_APPROACH_SLOWDOWN_RADIUS_PX,
+        config.OVERHEAD_CENTER_RADIUS_PX + 1,
+    )
+    approach_scale = min(1.0, radial_error / float(max(slowdown_radius, 1)))
+    approach_scale = max(config.OVERHEAD_APPROACH_MIN_SPEED_SCALE, approach_scale)
+
     if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
-        return MOVE_FORWARD, dy, 0.0
+        return MOVE_FORWARD, dy, approach_scale
 
     if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
         if config.OVERHEAD_REVERSE_ENABLED:
-            return MOVE_REVERSE, dy, 0.0
+            return MOVE_REVERSE, dy, approach_scale
 
         turn_strength = config.MIN_TURN_STRENGTH + (
             (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
@@ -367,9 +374,21 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
         elif command == MOVE_RIGHT:
             motor.move_right()
         elif command == MOVE_FORWARD:
-            motor.move_forward()
+            duty = config.MOTOR_FORWARD_DUTY
+            if turn_strength > 0.0:
+                duty = max(
+                    config.MOTOR_FORWARD_DUTY * config.OVERHEAD_APPROACH_MIN_SPEED_SCALE,
+                    min(config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY * turn_strength),
+                )
+            motor._drive(True, True, duty, duty)
         elif command == MOVE_REVERSE:
-            motor.move_reverse()
+            duty = config.MOTOR_FORWARD_DUTY
+            if turn_strength > 0.0:
+                duty = max(
+                    config.MOTOR_FORWARD_DUTY * config.OVERHEAD_APPROACH_MIN_SPEED_SCALE,
+                    min(config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY * turn_strength),
+                )
+            motor._drive(False, False, duty, duty)
         else:
             motor.stop()
     except Exception as exc:

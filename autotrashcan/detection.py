@@ -6,7 +6,7 @@ import config
 
 
 class MotionDetector:
-    """Detect the largest plausible color target in the frame."""
+    """Detect the largest plausible moving target as a fallback."""
 
     def __init__(self):
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, config.MORPH_KERNEL)
@@ -92,7 +92,9 @@ class MotionDetector:
         motion_mask = cv2.morphologyEx(motion_mask, cv2.MORPH_OPEN, self.motion_kernel)
         motion_mask = cv2.morphologyEx(motion_mask, cv2.MORPH_CLOSE, self.motion_kernel)
 
-        contours, _ = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        proposal_mask = cv2.bitwise_or(target_mask, motion_mask)
+        proposal_mask = cv2.morphologyEx(proposal_mask, cv2.MORPH_CLOSE, self.motion_kernel)
+        contours, _ = cv2.findContours(proposal_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         frame_height, frame_width = frame.shape[:2]
         search_top = int(frame_height * config.SEARCH_TOP_RATIO)
         search_bottom = int(frame_height * config.SEARCH_BOTTOM_RATIO)
@@ -116,15 +118,11 @@ class MotionDetector:
             if cy < search_top or cy > search_bottom:
                 continue
 
-            bbox_mask = target_mask[y : y + h, x : x + w]
+            bbox_mask = proposal_mask[y : y + h, x : x + w]
             target_pixels = cv2.countNonZero(bbox_mask)
             bbox_area = max(w * h, 1)
             target_ratio = target_pixels / float(bbox_area)
             if target_pixels < config.MIN_TARGET_PIXELS or target_ratio < config.MIN_TARGET_RATIO:
-                continue
-
-            color_confidence = min(1.0, target_pixels / float(max(area, 1.0)))
-            if color_confidence < config.MIN_COLOR_CONFIDENCE:
                 continue
 
             motion_bbox = motion_mask[y : y + h, x : x + w]
@@ -132,6 +130,10 @@ class MotionDetector:
             motion_overlap = motion_pixels / float(bbox_area)
             if motion_pixels < config.MIN_MOTION_PIXELS or motion_overlap < config.MIN_MOTION_OVERLAP_RATIO:
                 continue
+
+            color_bbox = target_mask[y : y + h, x : x + w]
+            color_pixels = cv2.countNonZero(color_bbox)
+            color_confidence = min(1.0, color_pixels / float(max(area, 1.0)))
 
             center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)
             edge_distance = min(x, frame_width - (x + w))

@@ -19,7 +19,7 @@ CAMERA_VIEW_SHARPEN_SIGMA = 1.2
 CAMERA_VIEW_SHARPEN_AMOUNT = 1.6
 
 # detector settings
-DETECTOR_MODE = "color"  # "color", "object", or "hybrid"
+DETECTOR_MODE = "object"  # "color", "object", or "hybrid"
 OBJECT_MODEL_PATH = "models/frozen_inference_graph.pb"
 OBJECT_CONFIG_PATH = "models/ssd_mobilenet_v1_coco_2017_11_17.pbtxt"
 OBJECT_CLASSES_PATH = "models/classes.txt"

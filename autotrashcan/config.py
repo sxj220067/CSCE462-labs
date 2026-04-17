@@ -6,8 +6,8 @@ CAMERA_FACING_UP = True
 # camera settings
 CAMERA_BACKEND = "picamera2"  # "auto", "opencv", or "picamera2"
 CAMERA_SOURCE = 0  # camera index for USB/Webcam when using the OpenCV backend
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
+FRAME_WIDTH = 1280
+FRAME_HEIGHT = 720
 TARGET_FPS = 30
 
 # detector settings
@@ -15,8 +15,8 @@ DETECTOR_MODE = "hybrid"  # "color", "object", or "hybrid"
 OBJECT_MODEL_PATH = "models/frozen_inference_graph.pb"
 OBJECT_CONFIG_PATH = "models/ssd_mobilenet_v1_coco_2017_11_17.pbtxt"
 OBJECT_CLASSES_PATH = "models/classes.txt"
-OBJECT_INPUT_WIDTH = 320
-OBJECT_INPUT_HEIGHT = 320
+OBJECT_INPUT_WIDTH = 640
+OBJECT_INPUT_HEIGHT = 640
 OBJECT_SCALE = 0.00392156862745098  # 1/255
 OBJECT_MEAN = (0.0, 0.0, 0.0)
 OBJECT_SWAP_RB = True

@@ -363,9 +363,9 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
 
     try:
         if command == MOVE_LEFT:
-            motor._steer(MOVE_LEFT, turn_strength)
+            motor.move_left()
         elif command == MOVE_RIGHT:
-            motor._steer(MOVE_RIGHT, turn_strength)
+            motor.move_right()
         elif command == MOVE_FORWARD:
             motor.move_forward()
         elif command == MOVE_REVERSE:

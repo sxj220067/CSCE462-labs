@@ -89,9 +89,10 @@ def main():
             motion_mask, thresh_mask, candidates = detector.detect(frame)
             state = tracker.get_state()
 
+            current_bbox = None
             if candidates:
-                best_bbox = tracker.select_best_candidate(candidates)
-                tracker.update(best_bbox)
+                current_bbox = tracker.select_best_candidate(candidates)
+                tracker.update(current_bbox)
                 state = tracker.get_state()
             else:
                 tracker.update(None)
@@ -104,9 +105,8 @@ def main():
             turn_strength = 0.0
             target_verified = tracker.is_target_stable()
 
-            if tracker.get_last_bbox() is not None:
-                last_bbox = tracker.get_last_bbox()
-                x, y, w, h = last_bbox
+            if current_bbox is not None:
+                x, y, w, h = current_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
                 aim_point = target_center
 
@@ -126,9 +126,9 @@ def main():
                     planned_path,
                     config.FRAME_WIDTH,
                     config.FRAME_HEIGHT,
-                    target_bbox=last_bbox,
+                    target_bbox=current_bbox,
                 )
-            elif state == TrackState.LOST:
+            else:
                 command = STOP
 
             now = time.time()

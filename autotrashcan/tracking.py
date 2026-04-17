@@ -57,14 +57,21 @@ class ObjectTracker:
         predicted_center = self.predict_next_center()
         best_bbox = None
         best_score = None
+        fallback_bbox = None
+        fallback_score = None
 
         for _, bbox in candidates:
             x, y, w, h = bbox
             center = (int(x + w / 2), int(y + h / 2))
             area = w * h
+            base_score = area - (y * 2)
+
+            if fallback_score is None or base_score > fallback_score:
+                fallback_score = base_score
+                fallback_bbox = bbox
 
             if last_center is None:
-                score = area - (y * 2)
+                score = base_score
             else:
                 anchor = predicted_center if predicted_center is not None else last_center
                 dx = center[0] - anchor[0]
@@ -78,6 +85,9 @@ class ObjectTracker:
             if best_score is None or score > best_score:
                 best_score = score
                 best_bbox = bbox
+
+        if best_bbox is None:
+            return fallback_bbox
 
         return best_bbox
 

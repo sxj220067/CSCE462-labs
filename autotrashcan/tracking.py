@@ -55,6 +55,11 @@ class ObjectTracker:
 
         last_center = self.get_center()
         predicted_center = self.predict_next_center()
+        last_bbox = self.get_last_bbox()
+        last_area = None
+        if last_bbox is not None:
+            _, _, last_w, last_h = last_bbox
+            last_area = max(last_w * last_h, 1)
         best_bbox = None
         best_score = None
         fallback_bbox = None
@@ -81,6 +86,12 @@ class ObjectTracker:
                     continue
                 lock_bonus = config.TARGET_LOCK_BONUS if self.is_locked() else (config.TARGET_LOCK_BONUS * 0.3)
                 score = area + lock_bonus - distance_sq
+
+                if last_area is not None:
+                    area_ratio = max(area, last_area) / float(min(area, last_area))
+                    if area_ratio > config.TARGET_AREA_CHANGE_MAX_RATIO:
+                        continue
+                    score -= (area_ratio - 1.0) * config.TARGET_AREA_CHANGE_PENALTY
 
             if best_score is None or score > best_score:
                 best_score = score

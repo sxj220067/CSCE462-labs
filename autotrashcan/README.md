@@ -86,6 +86,16 @@ python3 main.py
 
 Press `q` or `Esc` to quit.
 
+To view the live camera feed without detection or motor control:
+
+```bash
+cd ~/projects/CSCE462-labs/autotrashcan
+source .venv/bin/activate
+python3 camera_view.py
+```
+
+This opens a simple preview window with a center crosshair, center capture circle, and FPS.
+
 ## Preconfigured behavior
 - `CAMERA_BACKEND = "auto"` tries `Picamera2` first, then falls back to OpenCV.
 - Use `CAMERA_BACKEND = "picamera2"` for Raspberry Pi Camera modules.

@@ -21,6 +21,19 @@ class MotionDetector:
             self.target_ranges = tuple(config.TARGET_HSV_RANGES)
         else:
             self.target_ranges = ((config.TARGET_HSV_LOWER, config.TARGET_HSV_UPPER),)
+        self.neutral_ranges = tuple(getattr(config, "NEUTRAL_HSV_RANGES", ()))
+
+    def _build_hsv_range_mask(self, hsv, ranges):
+        mask = None
+        for lower, upper in ranges:
+            range_mask = cv2.inRange(hsv, lower, upper)
+            mask = range_mask if mask is None else cv2.bitwise_or(mask, range_mask)
+
+        if mask is None:
+            height, width = hsv.shape[:2]
+            return np.zeros((height, width), dtype=np.uint8)
+
+        return mask
 
     def _build_target_mask(self, frame):
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -29,10 +42,8 @@ class MotionDetector:
         _, a_channel, _ = cv2.split(lab)
         hue, sat, val = cv2.split(hsv)
 
-        hsv_mask = None
-        for lower, upper in self.target_ranges:
-            range_mask = cv2.inRange(hsv, lower, upper)
-            hsv_mask = range_mask if hsv_mask is None else cv2.bitwise_or(hsv_mask, range_mask)
+        hsv_mask = self._build_hsv_range_mask(hsv, self.target_ranges)
+        neutral_hsv_mask = self._build_hsv_range_mask(hsv, self.neutral_ranges)
 
         sat_gate = sat >= config.HSV_RED_MIN_SAT
         val_gate = val >= config.HSV_RED_MIN_VAL
@@ -50,7 +61,32 @@ class MotionDetector:
             + red_dominance_mask.astype(np.uint8)
             + lab_red_mask.astype(np.uint8)
         )
-        combined_mask = np.where(score >= config.TARGET_BLEND_MIN_SCORE, 255, 0).astype(np.uint8)
+        red_target_mask = np.where(score >= config.TARGET_BLEND_MIN_SCORE, 255, 0).astype(np.uint8)
+
+        neutral_sat_gate = sat <= 90
+        neutral_val_gate = val >= 85
+        channel_spread = np.maximum.reduce(
+            [
+                np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)),
+                np.abs(r_channel.astype(np.int16) - b_channel.astype(np.int16)),
+                np.abs(g_channel.astype(np.int16) - b_channel.astype(np.int16)),
+            ]
+        )
+        neutral_color_mask = channel_spread <= 45
+        reflective_highlight_mask = np.maximum.reduce([r_channel, g_channel, b_channel]) >= 150
+
+        neutral_score = (
+            ((neutral_hsv_mask > 0) & neutral_sat_gate & neutral_val_gate).astype(np.uint8)
+            + neutral_color_mask.astype(np.uint8)
+            + reflective_highlight_mask.astype(np.uint8)
+        )
+        neutral_target_mask = np.where(
+            neutral_score >= config.NEUTRAL_BLEND_MIN_SCORE,
+            255,
+            0,
+        ).astype(np.uint8)
+
+        combined_mask = cv2.bitwise_or(red_target_mask, neutral_target_mask)
 
         combined_mask = cv2.GaussianBlur(combined_mask, config.BLUR_SIZE, 0)
         _, combined_mask = cv2.threshold(

@@ -69,7 +69,7 @@ def main():
     last_print = 0.0
 
     print("Vision test starting.")
-    print("Show a bright yellow object to the camera.")
+    print("Show the target object to the camera.")
     print("Press q or Esc to quit.")
 
     try:
@@ -103,7 +103,7 @@ def main():
             else:
                 cv2.putText(
                     frame,
-                    "No yellow target detected",
+                    "No target detected",
                     (10, 25),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,

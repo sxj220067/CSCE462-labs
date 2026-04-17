@@ -79,8 +79,6 @@ def main():
     last_offset = 0
     last_turn_strength = 0.0
     last_command_sent_time = 0.0
-    command_hold_frames = 0
-
     try:
         while True:
             frame = read_frame(cap)
@@ -130,20 +128,8 @@ def main():
                     config.FRAME_HEIGHT,
                     target_bbox=last_bbox,
                 )
-                command_hold_frames = config.COMMAND_HOLD_FRAMES
             elif state == TrackState.LOST:
                 command = STOP
-                command_hold_frames = 0
-
-            if (
-                command != STOP
-                and command_hold_frames > 0
-                and last_command != STOP
-            ):
-                command = last_command
-                offset = last_offset
-                turn_strength = last_turn_strength
-                command_hold_frames -= 1
 
             now = time.time()
 

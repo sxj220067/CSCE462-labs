@@ -89,6 +89,39 @@ class ObjectTracker:
         x2, y2 = self.centers[-1]
         return (x2 + (x2 - x1), y2 + (y2 - y1))
 
+    def get_motion_vector(self):
+        if len(self.centers) < 2:
+            return 0, 0
+
+        x1, y1 = self.centers[-2]
+        x2, y2 = self.centers[-1]
+        return x2 - x1, y2 - y1
+
+    def is_target_stable(self):
+        if len(self.centers) < config.MIN_TRACK_POINTS or len(self.bboxes) < config.MIN_TRACK_POINTS:
+            return False
+
+        recent_centers = list(self.centers)[-config.MIN_TRACK_POINTS :]
+        recent_bboxes = list(self.bboxes)[-config.MIN_TRACK_POINTS :]
+
+        max_step = 0.0
+        for idx in range(1, len(recent_centers)):
+            x1, y1 = recent_centers[idx - 1]
+            x2, y2 = recent_centers[idx]
+            step = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+            max_step = max(max_step, step)
+
+        areas = [w * h for _, _, w, h in recent_bboxes]
+        min_area = max(min(areas), 1)
+        max_area = max(areas)
+        area_ratio = max_area / float(min_area)
+
+        return (
+            self.is_locked()
+            and max_step <= config.TARGET_STABLE_MAX_STEP_PX
+            and area_ratio <= config.TARGET_STABLE_MAX_AREA_RATIO
+        )
+
     def is_locked(self):
         return self.locked_frames >= config.TARGET_MIN_LOCK_FRAMES
 

@@ -201,6 +201,62 @@ def compute_move_command(predicted_x, frame_width, deadzone_px=config.CENTER_DEA
     return MOVE_RIGHT, offset, turn_strength
 
 
+def plan_path_to_target(target_point, frame_width, frame_height):
+    if target_point is None:
+        return []
+
+    robot_origin = (frame_width // 2, frame_height - 1)
+    target_x, target_y = target_point
+    lookahead_y = int(frame_height - ((frame_height - target_y) * config.PATH_GUIDE_LOOKAHEAD_RATIO))
+    lookahead_y = max(target_y, min(frame_height - 1, lookahead_y))
+
+    return [
+        robot_origin,
+        (robot_origin[0], lookahead_y),
+        (target_x, target_y),
+    ]
+
+
+def compute_path_command(path_points, frame_width, frame_height, target_bbox=None):
+    if len(path_points) < 2:
+        return STOP, 0, 0.0
+
+    robot_origin = path_points[0]
+    waypoint = path_points[1]
+    goal = path_points[-1]
+
+    close_to_goal = False
+    if target_bbox is not None:
+        x, y, w, h = target_bbox
+        target_center_y = int(y + (h / 2))
+        bbox_area = w * h
+        close_to_goal = (
+            target_center_y >= int(frame_height * config.TARGET_CLOSE_Y_RATIO)
+            or bbox_area >= config.TARGET_CLOSE_AREA
+        )
+
+    active_point = goal if close_to_goal else waypoint
+    offset = int(active_point[0] - robot_origin[0])
+    turn_threshold = max(config.CENTER_DEADZONE_PX, int(frame_width * config.PATH_TURN_CLOSE_RATIO))
+
+    if abs(offset) <= config.TARGET_STOP_X_DEADZONE_PX and close_to_goal:
+        return STOP, 0, 0.0
+
+    if abs(offset) <= config.CENTER_DEADZONE_PX:
+        return MOVE_FORWARD, offset, 0.0
+
+    command, offset, turn_strength = compute_move_command(active_point[0], frame_width, deadzone_px=turn_threshold)
+    turn_strength = max(config.PATH_MIN_TURN_STRENGTH, turn_strength)
+
+    if close_to_goal:
+        return command, offset, turn_strength
+
+    if config.APPROACH_ALIGNED_ONLY:
+        return command, offset, turn_strength
+
+    return MOVE_FORWARD, offset, turn_strength
+
+
 def compute_approach_command(target_bbox, frame_width, frame_height):
     if target_bbox is None:
         return STOP, 0, 0.0

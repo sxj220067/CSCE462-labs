@@ -4,8 +4,9 @@ import cv2
 
 import config
 from camera import create_capture, read_frame, release_capture
-from control_interface import compute_approach_command, send_motor_command, STOP
+from control_interface import compute_path_command, plan_path_to_target, send_motor_command, STOP
 from detection import MotionDetector
+from prediction import predict_landing_point
 from tracking import ObjectTracker, TrackState
 
 
@@ -14,7 +15,7 @@ def draw_status(frame, text, fps):
     cv2.putText(frame, f"FPS: {fps:.1f}", (10, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
 
-def draw_tracking(frame, tracker, predicted_point):
+def draw_tracking(frame, tracker, predicted_point, planned_path, target_verified):
     if tracker.get_last_bbox() is not None:
         x, y, w, h = tracker.get_last_bbox()
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 128, 255), 2)
@@ -34,6 +35,16 @@ def draw_tracking(frame, tracker, predicted_point):
             (0, 0, 255),
             2,
         )
+
+    if planned_path:
+        for idx in range(len(planned_path) - 1):
+            cv2.line(frame, planned_path[idx], planned_path[idx + 1], (255, 0, 255), 2)
+        for point in planned_path:
+            cv2.circle(frame, point, 4, (255, 0, 255), -1)
+
+    verification_color = (0, 200, 0) if target_verified else (0, 165, 255)
+    verification_text = "Target checked" if target_verified else "Checking target"
+    cv2.putText(frame, verification_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, verification_color, 2)
 
 
 def main():
@@ -83,21 +94,41 @@ def main():
                 state = tracker.get_state()
 
             aim_point = None
+            planned_path = []
             command = STOP
             offset = 0
             turn_strength = 0.0
+            target_verified = tracker.is_target_stable()
 
             if state == TrackState.TRACKING and tracker.get_last_bbox() is not None:
                 last_bbox = tracker.get_last_bbox()
                 x, y, w, h = last_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
                 aim_point = target_center
-                command, offset, turn_strength = compute_approach_command(
-                    last_bbox,
-                    config.FRAME_WIDTH,
-                    config.FRAME_HEIGHT,
-                )
-                command_hold_frames = config.COMMAND_HOLD_FRAMES
+
+                if config.USE_PREDICTION and len(tracker.get_path()) >= config.MIN_TRACK_POINTS:
+                    predicted_point = predict_landing_point(
+                        tracker.get_path(),
+                        config.FRAME_HEIGHT,
+                        config.FRAME_WIDTH,
+                        fps,
+                    )
+                    if predicted_point is not None:
+                        aim_point = predicted_point
+
+                planned_path = plan_path_to_target(aim_point, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+
+                if target_verified:
+                    command, offset, turn_strength = compute_path_command(
+                        planned_path,
+                        config.FRAME_WIDTH,
+                        config.FRAME_HEIGHT,
+                        target_bbox=last_bbox,
+                    )
+                    command_hold_frames = config.COMMAND_HOLD_FRAMES
+                else:
+                    command = STOP
+                    command_hold_frames = 0
             elif state == TrackState.LOST:
                 command = STOP
                 command_hold_frames = 0
@@ -135,12 +166,12 @@ def main():
                     f"[STATUS] state={state.name} fps={fps:.1f} "
                     f"candidates={tracker.candidate_count} tracked_points={len(tracker.get_path())} "
                     f"locked={tracker.is_locked()} cooldown={tracker.reacquire_cooldown} "
-                    f"command={command} strength={turn_strength:.2f}"
+                    f"stable={target_verified} command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now
 
             if config.DEBUG_DRAW:
-                draw_tracking(frame, tracker, aim_point)
+                draw_tracking(frame, tracker, aim_point, planned_path, target_verified)
                 draw_status(frame, state.name, fps)
                 cv2.line(
                     frame,

@@ -283,8 +283,6 @@ class ObjectDetector:
             motion_pixels = cv2.countNonZero(motion_bbox)
             bbox_area = max(area, 1)
             motion_overlap = motion_pixels / float(bbox_area)
-            if motion_pixels < config.MIN_MOTION_PIXELS or motion_overlap < config.MIN_MOTION_OVERLAP_RATIO:
-                continue
 
             cv2.rectangle(target_mask, (x, y), (x + w, y + h), 255, -1)
             center_bias = 1.0 - abs(cx - (frame_width / 2.0)) / max(frame_width / 2.0, 1.0)

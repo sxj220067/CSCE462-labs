@@ -126,7 +126,7 @@ L298N_RIGHT_IN4_PIN = 24
 L298N_PWM_FREQUENCY = 1000
 MOTOR_FORWARD_DUTY = 0.55
 MOTOR_TURN_DUTY = 0.45
-LEFT_MOTOR_SCALE = 6.5
+LEFT_MOTOR_SCALE = 5
 RIGHT_MOTOR_SCALE = 1.0
 # Motor tuning notes for real hardware:
 # - Increase MOTOR_FORWARD_DUTY if the robot does not move or feels too slow.

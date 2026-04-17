@@ -31,12 +31,7 @@ OBJECT_SWAP_RB = True
 OBJECT_CONFIDENCE_THRESHOLD = 0.35
 OBJECT_NMS_THRESHOLD = 0.40
 OBJECT_TARGET_LABELS = (
-    "trash",
-    "garbage",
-    "waste",
-    "rubbish",
     "bottle",
-    "cup",
     "can",
     "wine glass",
 )

@@ -186,6 +186,11 @@ class MotionDetector:
 class ObjectDetector:
     """Detect target objects with an OpenCV DNN model and motion gating."""
 
+    LABEL_ALIASES = {
+        "can": {"wine glass", "bottle"},
+        "bottle": {"wine glass"},
+    }
+
     def __init__(self):
         self.motion_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, config.MOTION_MORPH_KERNEL)
         self.bg_subtractor = cv2.createBackgroundSubtractorMOG2(
@@ -234,6 +239,10 @@ class ObjectDetector:
         normalized = label.lower()
         if normalized in self.target_labels:
             return True
+
+        for target in self.target_labels:
+            if normalized in self.LABEL_ALIASES.get(target, set()):
+                return True
 
         return any(target in normalized for target in self.target_labels)
 

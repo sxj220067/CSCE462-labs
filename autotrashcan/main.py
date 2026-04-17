@@ -135,7 +135,11 @@ def main():
                 command = STOP
                 command_hold_frames = 0
 
-            if command == STOP and command_hold_frames > 0 and last_command != STOP:
+            if (
+                command != STOP
+                and command_hold_frames > 0
+                and last_command != STOP
+            ):
                 command = last_command
                 offset = last_offset
                 turn_strength = last_turn_strength

@@ -79,6 +79,7 @@ def main():
     last_offset = 0
     last_turn_strength = 0.0
     last_command_sent_time = 0.0
+    target_hold_until = 0.0
     try:
         while True:
             frame = read_frame(cap)
@@ -135,6 +136,17 @@ def main():
                 command = STOP
 
             now = time.time()
+
+            if command == STOP and current_bbox is not None and planned_path:
+                if target_hold_until <= now:
+                    target_hold_until = now + config.OVERHEAD_TARGET_HOLD_S
+
+            if now < target_hold_until:
+                command = STOP
+                offset = 0
+                turn_strength = 0.0
+            elif current_bbox is None:
+                target_hold_until = 0.0
 
             should_send_command = (
                 command != last_command

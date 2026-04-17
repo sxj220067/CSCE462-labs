@@ -230,6 +230,10 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     center_y = frame_height // 2
     dx = int(target_point[0] - center_x)
     dy = int(target_point[1] - center_y)
+    if config.OVERHEAD_INVERT_X:
+        dx = -dx
+    if config.OVERHEAD_INVERT_Y:
+        dy = -dy
     radial_error = math.hypot(dx, dy)
 
     if radial_error <= config.OVERHEAD_CENTER_RADIUS_PX:

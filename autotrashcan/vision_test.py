@@ -21,6 +21,11 @@ def describe_position(bbox, frame_width, frame_height):
     y_offset = center_y - (frame_height // 2)
 
     if config.CAMERA_FACING_UP:
+        if config.OVERHEAD_INVERT_X:
+            x_offset = -x_offset
+        if config.OVERHEAD_INVERT_Y:
+            y_offset = -y_offset
+
         if x_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
             horizontal = "left"
         elif x_offset > config.OVERHEAD_AXIS_DEADZONE_PX:

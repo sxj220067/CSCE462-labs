@@ -35,7 +35,7 @@ def create_picamera2_capture():
 
     camera = Picamera2()
     preview_config = camera.create_preview_configuration(
-        main={"size": (config.FRAME_WIDTH, config.FRAME_HEIGHT), "format": "BGR888"},
+        main={"size": (config.CAMERA_CAPTURE_WIDTH, config.CAMERA_CAPTURE_HEIGHT), "format": "BGR888"},
         controls={"FrameDurationLimits": (int(1_000_000 / config.TARGET_FPS), int(1_000_000 / config.TARGET_FPS))},
     )
     camera.configure(preview_config)
@@ -46,8 +46,8 @@ def create_picamera2_capture():
 
 def create_opencv_capture():
     cap = cv2.VideoCapture(config.CAMERA_SOURCE)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAMERA_CAPTURE_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAMERA_CAPTURE_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS, config.TARGET_FPS)
 
     if not cap.isOpened():
@@ -75,12 +75,12 @@ def create_capture():
     raise RuntimeError(f"Unsupported CAMERA_BACKEND: {config.CAMERA_BACKEND}")
 
 
-def read_frame(cap):
+def read_frame(cap, resize=True):
     ret, frame = cap.read()
     if not ret or frame is None:
         return None
 
-    if frame.shape[1] != config.FRAME_WIDTH or frame.shape[0] != config.FRAME_HEIGHT:
+    if resize and (frame.shape[1] != config.FRAME_WIDTH or frame.shape[0] != config.FRAME_HEIGHT):
         frame = cv2.resize(frame, (config.FRAME_WIDTH, config.FRAME_HEIGHT))
 
     return frame

@@ -96,6 +96,12 @@ python3 camera_view.py
 
 This opens a simple preview window with a center crosshair, center capture circle, and FPS.
 
+Current camera tuning is set up for an OV5647-style 5MP module:
+- capture stream: `1920x1080`
+- processing stream: `960x540`
+
+This keeps the preview sharp while avoiding a large FPS hit in the vision pipeline.
+
 ## Preconfigured behavior
 - `CAMERA_BACKEND = "auto"` tries `Picamera2` first, then falls back to OpenCV.
 - Use `CAMERA_BACKEND = "picamera2"` for Raspberry Pi Camera modules.

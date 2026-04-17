@@ -11,11 +11,12 @@ WINDOW_NAME = "AutoTrashCan Camera View"
 
 
 def draw_overlay(frame, fps):
-    center_x = config.FRAME_WIDTH // 2
-    center_y = config.FRAME_HEIGHT // 2
+    frame_height, frame_width = frame.shape[:2]
+    center_x = frame_width // 2
+    center_y = frame_height // 2
 
-    cv2.line(frame, (center_x, 0), (center_x, config.FRAME_HEIGHT), (0, 255, 0), 1)
-    cv2.line(frame, (0, center_y), (config.FRAME_WIDTH, center_y), (0, 255, 0), 1)
+    cv2.line(frame, (center_x, 0), (center_x, frame_height), (0, 255, 0), 1)
+    cv2.line(frame, (0, center_y), (frame_width, center_y), (0, 255, 0), 1)
     cv2.circle(frame, (center_x, center_y), config.OVERHEAD_CENTER_RADIUS_PX, (255, 255, 255), 1)
     cv2.putText(
         frame,
@@ -50,7 +51,7 @@ def main():
 
     print(
         f"Camera view starting: backend={config.CAMERA_BACKEND}, "
-        f"resolution={config.FRAME_WIDTH}x{config.FRAME_HEIGHT}"
+        f"camera={config.CAMERA_MODEL}, capture={config.CAMERA_CAPTURE_WIDTH}x{config.CAMERA_CAPTURE_HEIGHT}"
     )
 
     last_time = time.time()
@@ -59,7 +60,7 @@ def main():
 
     try:
         while True:
-            frame = read_frame(cap)
+            frame = read_frame(cap, resize=False)
             if frame is None:
                 print("Warning: empty frame from camera")
                 continue

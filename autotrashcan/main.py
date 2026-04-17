@@ -106,7 +106,7 @@ def main():
             turn_strength = 0.0
             target_verified = tracker.is_target_stable()
 
-            if state == TrackState.TRACKING and tracker.get_last_bbox() is not None:
+            if tracker.get_last_bbox() is not None:
                 last_bbox = tracker.get_last_bbox()
                 x, y, w, h = last_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
@@ -124,17 +124,13 @@ def main():
 
                 planned_path = plan_path_to_target(aim_point, config.FRAME_WIDTH, config.FRAME_HEIGHT)
 
-                if target_verified:
-                    command, offset, turn_strength = compute_path_command(
-                        planned_path,
-                        config.FRAME_WIDTH,
-                        config.FRAME_HEIGHT,
-                        target_bbox=last_bbox,
-                    )
-                    command_hold_frames = config.COMMAND_HOLD_FRAMES
-                else:
-                    command = STOP
-                    command_hold_frames = 0
+                command, offset, turn_strength = compute_path_command(
+                    planned_path,
+                    config.FRAME_WIDTH,
+                    config.FRAME_HEIGHT,
+                    target_bbox=last_bbox,
+                )
+                command_hold_frames = config.COMMAND_HOLD_FRAMES
             elif state == TrackState.LOST:
                 command = STOP
                 command_hold_frames = 0

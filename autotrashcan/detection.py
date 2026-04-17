@@ -4,7 +4,7 @@ import config
 
 
 class MotionDetector:
-    """Detect the largest plausible bright-yellow blob in the frame."""
+    """Detect the largest plausible color target in the frame."""
 
     def __init__(self):
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, config.MORPH_KERNEL)
@@ -33,9 +33,15 @@ class MotionDetector:
             target_mask = range_mask if target_mask is None else cv2.bitwise_or(target_mask, range_mask)
 
         target_mask = cv2.GaussianBlur(target_mask, config.BLUR_SIZE, 0)
-        _, target_mask = cv2.threshold(target_mask, 127, 255, cv2.THRESH_BINARY)
+        _, target_mask = cv2.threshold(
+            target_mask,
+            config.TARGET_MASK_THRESHOLD,
+            255,
+            cv2.THRESH_BINARY,
+        )
         target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, self.kernel)
         target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_CLOSE, self.kernel)
+        target_mask = cv2.dilate(target_mask, self.kernel, iterations=1)
 
         learning_rate = config.MOG_LEARNING_RATE
         if self.frame_count <= config.MOTION_WARMUP_FRAMES:

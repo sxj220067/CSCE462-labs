@@ -1,4 +1,5 @@
 import atexit
+import math
 
 import config
 
@@ -205,6 +206,10 @@ def plan_path_to_target(target_point, frame_width, frame_height):
     if target_point is None:
         return []
 
+    if config.CAMERA_FACING_UP:
+        robot_origin = (frame_width // 2, frame_height // 2)
+        return [robot_origin, target_point]
+
     robot_origin = (frame_width // 2, frame_height - 1)
     target_x, target_y = target_point
     lookahead_y = int(frame_height - ((frame_height - target_y) * config.PATH_GUIDE_LOOKAHEAD_RATIO))
@@ -217,9 +222,64 @@ def plan_path_to_target(target_point, frame_width, frame_height):
     ]
 
 
+def compute_overhead_command(target_point, frame_width, frame_height):
+    if target_point is None:
+        return STOP, 0, 0.0
+
+    center_x = frame_width // 2
+    center_y = frame_height // 2
+    dx = int(target_point[0] - center_x)
+    dy = int(target_point[1] - center_y)
+    radial_error = math.hypot(dx, dy)
+
+    if radial_error <= config.OVERHEAD_CENTER_RADIUS_PX:
+        return STOP, 0, 0.0
+
+    heading_angle_deg = math.degrees(math.atan2(dx, -dy))
+    angle_magnitude = abs(heading_angle_deg)
+
+    if angle_magnitude > config.OVERHEAD_ALIGN_ANGLE_DEG and abs(dx) > config.OVERHEAD_AXIS_DEADZONE_PX:
+        turn_strength = config.MIN_TURN_STRENGTH + (
+            (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
+            * min(1.0, angle_magnitude / 90.0)
+        )
+        if dx < 0:
+            return MOVE_LEFT, dx, turn_strength
+        return MOVE_RIGHT, dx, turn_strength
+
+    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
+        return MOVE_FORWARD, dy, 0.0
+
+    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
+        if config.OVERHEAD_REVERSE_ENABLED:
+            return MOVE_REVERSE, dy, 0.0
+
+        turn_strength = config.MIN_TURN_STRENGTH + (
+            (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
+            * min(1.0, angle_magnitude / 90.0)
+        )
+        if dx < 0:
+            return MOVE_RIGHT, dx, turn_strength
+        return MOVE_LEFT, dx, turn_strength
+
+    if abs(dx) <= config.OVERHEAD_AXIS_DEADZONE_PX:
+        return STOP, 0, 0.0
+
+    turn_strength = config.MIN_TURN_STRENGTH + (
+        (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
+        * min(1.0, abs(dx) / max(frame_width / 2.0, 1.0))
+    )
+    if dx < 0:
+        return MOVE_LEFT, dx, turn_strength
+    return MOVE_RIGHT, dx, turn_strength
+
+
 def compute_path_command(path_points, frame_width, frame_height, target_bbox=None):
     if len(path_points) < 2:
         return STOP, 0, 0.0
+
+    if config.CAMERA_FACING_UP:
+        return compute_overhead_command(path_points[-1], frame_width, frame_height)
 
     robot_origin = path_points[0]
     waypoint = path_points[1]

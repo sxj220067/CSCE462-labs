@@ -1,5 +1,8 @@
 # Configuration parameters for auto trash can vision pipeline
 
+# camera geometry
+CAMERA_FACING_UP = True
+
 # camera settings
 CAMERA_BACKEND = "picamera2"  # "auto", "opencv", or "picamera2"
 CAMERA_SOURCE = 0  # camera index for USB/Webcam when using the OpenCV backend
@@ -23,10 +26,12 @@ MAX_CANDIDATES = 4
 SEARCH_TOP_RATIO = 0.05
 SEARCH_BOTTOM_RATIO = 0.95
 EDGE_IGNORE_PX = 8
-TARGET_HSV_LOWER = (16, 70, 70)
-TARGET_HSV_UPPER = (42, 255, 255)
+TARGET_HSV_RANGES = (
+    ((12, 40, 40), (26, 255, 255)),
+    ((26, 25, 65), (42, 255, 255)),
+)
 MIN_TARGET_PIXELS = 40
-MIN_TARGET_RATIO = 0.06
+MIN_TARGET_RATIO = 0.03
 
 # tracking settings
 TRACK_HISTORY = 20
@@ -50,6 +55,10 @@ USE_PREDICTION = False
 
 # control settings
 CENTER_DEADZONE_PX = 40
+OVERHEAD_CENTER_RADIUS_PX = 35
+OVERHEAD_AXIS_DEADZONE_PX = 24
+OVERHEAD_ALIGN_ANGLE_DEG = 18.0
+OVERHEAD_REVERSE_ENABLED = True
 MOVE_SCALE = 1.0  # scalar for speed command
 MIN_TURN_STRENGTH = 0.35
 MAX_TURN_STRENGTH = 1.0

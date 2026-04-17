@@ -8,16 +8,23 @@ class MotionDetector:
 
     def __init__(self):
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, config.MORPH_KERNEL)
-        self.target_lower = config.TARGET_HSV_LOWER
-        self.target_upper = config.TARGET_HSV_UPPER
+        if hasattr(config, "TARGET_HSV_RANGES"):
+            self.target_ranges = tuple(config.TARGET_HSV_RANGES)
+        else:
+            self.target_ranges = ((config.TARGET_HSV_LOWER, config.TARGET_HSV_UPPER),)
 
     def detect(self, frame):
         if frame is None:
             return None, None, []
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        target_mask = cv2.inRange(hsv, self.target_lower, self.target_upper)
+        target_mask = None
+        for lower, upper in self.target_ranges:
+            range_mask = cv2.inRange(hsv, lower, upper)
+            target_mask = range_mask if target_mask is None else cv2.bitwise_or(target_mask, range_mask)
+
         target_mask = cv2.GaussianBlur(target_mask, config.BLUR_SIZE, 0)
+        _, target_mask = cv2.threshold(target_mask, 127, 255, cv2.THRESH_BINARY)
         target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, self.kernel)
         target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_CLOSE, self.kernel)
 

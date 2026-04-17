@@ -18,6 +18,29 @@ def describe_position(bbox, frame_width, frame_height):
     area = w * h
 
     x_offset = center_x - (frame_width // 2)
+    y_offset = center_y - (frame_height // 2)
+
+    if config.CAMERA_FACING_UP:
+        if x_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
+            horizontal = "left"
+        elif x_offset > config.OVERHEAD_AXIS_DEADZONE_PX:
+            horizontal = "right"
+        else:
+            horizontal = "centered-x"
+
+        if y_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
+            vertical = "ahead"
+        elif y_offset > config.OVERHEAD_AXIS_DEADZONE_PX:
+            vertical = "behind"
+        else:
+            vertical = "centered-y"
+
+        summary = (
+            f"{horizontal}, {vertical}, "
+            f"center=({center_x},{center_y}), offset=({x_offset},{y_offset}), area={area}"
+        )
+        return summary, horizontal
+
     stop_y = int(frame_height * config.TARGET_CLOSE_Y_RATIO)
 
     if x_offset < -config.TARGET_STOP_X_DEADZONE_PX:
@@ -95,13 +118,29 @@ def main():
                 (0, 255, 0),
                 1,
             )
-            cv2.line(
-                frame,
-                (0, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
-                (config.FRAME_WIDTH, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
-                (0, 255, 0),
-                1,
-            )
+            if config.CAMERA_FACING_UP:
+                cv2.line(
+                    frame,
+                    (0, config.FRAME_HEIGHT // 2),
+                    (config.FRAME_WIDTH, config.FRAME_HEIGHT // 2),
+                    (0, 255, 0),
+                    1,
+                )
+                cv2.circle(
+                    frame,
+                    (config.FRAME_WIDTH // 2, config.FRAME_HEIGHT // 2),
+                    config.OVERHEAD_CENTER_RADIUS_PX,
+                    (255, 255, 255),
+                    1,
+                )
+            else:
+                cv2.line(
+                    frame,
+                    (0, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
+                    (config.FRAME_WIDTH, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
+                    (0, 255, 0),
+                    1,
+                )
 
             if has_display and config.SHOW_WINDOW:
                 cv2.imshow("AutoTrashCan Vision Test", frame)

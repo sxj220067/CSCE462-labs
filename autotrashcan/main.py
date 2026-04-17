@@ -46,6 +46,11 @@ def draw_tracking(frame, tracker, predicted_point, planned_path, target_verified
     verification_text = "Target checked" if target_verified else "Checking target"
     cv2.putText(frame, verification_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, verification_color, 2)
 
+    if config.CAMERA_FACING_UP:
+        frame_center = (config.FRAME_WIDTH // 2, config.FRAME_HEIGHT // 2)
+        cv2.circle(frame, frame_center, config.OVERHEAD_CENTER_RADIUS_PX, (255, 255, 255), 1)
+        cv2.drawMarker(frame, frame_center, (255, 255, 255), cv2.MARKER_CROSS, 18, 1)
+
 
 def main():
     cap = create_capture()
@@ -180,13 +185,22 @@ def main():
                     (0, 255, 0),
                     1,
                 )
-                cv2.line(
-                    frame,
-                    (0, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
-                    (config.FRAME_WIDTH, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
-                    (0, 255, 0),
-                    1,
-                )
+                if config.CAMERA_FACING_UP:
+                    cv2.line(
+                        frame,
+                        (0, config.FRAME_HEIGHT // 2),
+                        (config.FRAME_WIDTH, config.FRAME_HEIGHT // 2),
+                        (0, 255, 0),
+                        1,
+                    )
+                else:
+                    cv2.line(
+                        frame,
+                        (0, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
+                        (config.FRAME_WIDTH, int(config.FRAME_HEIGHT * config.TARGET_CLOSE_Y_RATIO)),
+                        (0, 255, 0),
+                        1,
+                    )
 
             if window_enabled:
                 try:

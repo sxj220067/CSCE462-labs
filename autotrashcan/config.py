@@ -10,6 +10,28 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 TARGET_FPS = 30
 
+# detector settings
+DETECTOR_MODE = "hybrid"  # "color", "object", or "hybrid"
+OBJECT_MODEL_PATH = "models/frozen_inference_graph.pb"
+OBJECT_CONFIG_PATH = "models/ssd_mobilenet_v1_coco_2017_11_17.pbtxt"
+OBJECT_CLASSES_PATH = "models/classes.txt"
+OBJECT_INPUT_WIDTH = 320
+OBJECT_INPUT_HEIGHT = 320
+OBJECT_SCALE = 0.00392156862745098  # 1/255
+OBJECT_MEAN = (0.0, 0.0, 0.0)
+OBJECT_SWAP_RB = True
+OBJECT_CONFIDENCE_THRESHOLD = 0.35
+OBJECT_NMS_THRESHOLD = 0.40
+OBJECT_TARGET_LABELS = (
+    "trash",
+    "garbage",
+    "waste",
+    "rubbish",
+    "bottle",
+    "cup",
+    "can",
+)
+
 # motion detector settings
 MOG_HISTORY = 120
 MOG_VAR_THRESHOLD = 40

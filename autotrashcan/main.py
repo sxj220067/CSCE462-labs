@@ -5,7 +5,7 @@ import cv2
 import config
 from camera import create_capture, read_frame, release_capture
 from control_interface import compute_path_command, plan_path_to_target, send_motor_command, STOP
-from detection import MotionDetector
+from detection import create_detector
 from prediction import predict_landing_point
 from tracking import ObjectTracker, TrackState
 
@@ -54,7 +54,7 @@ def draw_tracking(frame, tracker, predicted_point, planned_path, target_verified
 
 def main():
     cap = create_capture()
-    detector = MotionDetector()
+    detector = create_detector()
     tracker = ObjectTracker()
     has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
     window_enabled = config.SHOW_WINDOW and has_display
@@ -68,7 +68,8 @@ def main():
 
     print(
         f"AutoTrashCan starting: backend={config.CAMERA_BACKEND}, "
-        f"window={'on' if window_enabled else 'off'}, motor_mock={config.MOTOR_MOCK}"
+        f"window={'on' if window_enabled else 'off'}, motor_mock={config.MOTOR_MOCK}, "
+        f"detector_mode={config.DETECTOR_MODE}"
     )
 
     last_time = time.time()

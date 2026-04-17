@@ -5,7 +5,7 @@ import cv2
 
 import config
 from camera import create_capture, read_frame, release_capture
-from detection import MotionDetector
+from detection import create_detector
 
 
 def describe_position(bbox, frame_width, frame_height):
@@ -64,12 +64,13 @@ def describe_position(bbox, frame_width, frame_height):
 
 def main():
     cap = create_capture()
-    detector = MotionDetector()
+    detector = create_detector()
     has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
     last_print = 0.0
 
     print("Vision test starting.")
     print("Show the target object to the camera.")
+    print(f"Detector mode: {config.DETECTOR_MODE}")
     print("Press q or Esc to quit.")
 
     try:

@@ -253,13 +253,20 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     )
     approach_scale = min(1.0, radial_error / float(max(slowdown_radius, 1)))
     approach_scale = max(config.OVERHEAD_APPROACH_MIN_SPEED_SCALE, approach_scale)
+    lateral_ratio = min(1.0, abs(dx) / max(frame_width / 2.0, 1.0))
+    approach_turn_strength = config.OVERHEAD_ARC_TURN_MIN_STRENGTH + (
+        (config.OVERHEAD_ARC_TURN_MAX_STRENGTH - config.OVERHEAD_ARC_TURN_MIN_STRENGTH)
+        * lateral_ratio
+    )
+    if abs(dx) <= config.OVERHEAD_AXIS_DEADZONE_PX:
+        approach_turn_strength = 0.0
 
     if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
-        return MOVE_FORWARD, dy, approach_scale
+        return MOVE_FORWARD, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 
     if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
         if config.OVERHEAD_REVERSE_ENABLED:
-            return MOVE_REVERSE, dy, approach_scale
+            return MOVE_REVERSE, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 
         turn_strength = config.MIN_TURN_STRENGTH + (
             (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
@@ -375,20 +382,28 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
             motor.move_right()
         elif command == MOVE_FORWARD:
             duty = config.MOTOR_FORWARD_DUTY
-            if turn_strength > 0.0:
-                duty = max(
-                    config.MOTOR_FORWARD_DUTY * config.OVERHEAD_APPROACH_MIN_SPEED_SCALE,
-                    min(config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY * turn_strength),
-                )
-            motor._drive(True, True, duty, duty)
+            if turn_strength > 0.0 and offset != 0:
+                outer_duty = duty
+                inner_ratio = max(0.2, 1.0 - turn_strength)
+                inner_duty = duty * inner_ratio
+                if offset < 0:
+                    motor._drive(True, True, inner_duty, outer_duty)
+                else:
+                    motor._drive(True, True, outer_duty, inner_duty)
+            else:
+                motor._drive(True, True, duty, duty)
         elif command == MOVE_REVERSE:
             duty = config.MOTOR_FORWARD_DUTY
-            if turn_strength > 0.0:
-                duty = max(
-                    config.MOTOR_FORWARD_DUTY * config.OVERHEAD_APPROACH_MIN_SPEED_SCALE,
-                    min(config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY * turn_strength),
-                )
-            motor._drive(False, False, duty, duty)
+            if turn_strength > 0.0 and offset != 0:
+                outer_duty = duty
+                inner_ratio = max(0.2, 1.0 - turn_strength)
+                inner_duty = duty * inner_ratio
+                if offset < 0:
+                    motor._drive(False, False, inner_duty, outer_duty)
+                else:
+                    motor._drive(False, False, outer_duty, inner_duty)
+            else:
+                motor._drive(False, False, duty, duty)
         else:
             motor.stop()
     except Exception as exc:

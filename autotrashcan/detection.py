@@ -163,8 +163,8 @@ class ObjectDetector:
     """Detect target objects with an OpenCV DNN model and motion gating."""
 
     LABEL_ALIASES = {
-        "can": {"wine glass", "bottle"},
-        "bottle": {"wine glass"},
+        "can": {"wine glass", "bottle", "cup"},
+        "bottle": {"wine glass", "cup"},
     }
 
     def __init__(self):

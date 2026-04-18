@@ -29,12 +29,15 @@ OBJECT_DETECT_EVERY_N_FRAMES = 1
 OBJECT_SCALE = 0.00392156862745098  # 1/255
 OBJECT_MEAN = (0.0, 0.0, 0.0)
 OBJECT_SWAP_RB = True
-OBJECT_CONFIDENCE_THRESHOLD = 0.20
+OBJECT_CONFIDENCE_THRESHOLD = 0.15
 OBJECT_NMS_THRESHOLD = 0.40
 OBJECT_TARGET_LABELS = (
     "bottle",
+    "can",
     "wine glass",
     "cup",
+    "plate",
+    "bowl",
 )
 
 # motion detector settings

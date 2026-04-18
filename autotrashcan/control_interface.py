@@ -242,11 +242,17 @@ def compute_overhead_command(target_point, frame_width, frame_height):
 
     heading_angle_deg = math.degrees(math.atan2(dx, -dy))
     angle_magnitude = abs(heading_angle_deg)
+    soft_align_zone = max(config.OVERHEAD_AXIS_DEADZONE_PX, config.OVERHEAD_SOFT_ALIGN_ZONE_PX)
+    pivot_turn_threshold = max(soft_align_zone + 1, config.OVERHEAD_PIVOT_TURN_THRESHOLD_PX)
 
-    if angle_magnitude > config.OVERHEAD_ALIGN_ANGLE_DEG and abs(dx) > config.OVERHEAD_AXIS_DEADZONE_PX:
-        turn_strength = config.MIN_TURN_STRENGTH + (
-            (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
-            * min(1.0, angle_magnitude / 90.0)
+    if angle_magnitude > config.OVERHEAD_ALIGN_ANGLE_DEG and abs(dx) > pivot_turn_threshold:
+        pivot_ratio = min(
+            1.0,
+            (abs(dx) - pivot_turn_threshold) / float(max((frame_width / 2.0) - pivot_turn_threshold, 1.0)),
+        )
+        turn_strength = config.OVERHEAD_PIVOT_TURN_MIN_STRENGTH + (
+            (config.OVERHEAD_PIVOT_TURN_MAX_STRENGTH - config.OVERHEAD_PIVOT_TURN_MIN_STRENGTH)
+            * pivot_ratio
         )
         if dx < 0:
             return MOVE_LEFT, dx, turn_strength
@@ -263,7 +269,7 @@ def compute_overhead_command(target_point, frame_width, frame_height):
         (config.OVERHEAD_ARC_TURN_MAX_STRENGTH - config.OVERHEAD_ARC_TURN_MIN_STRENGTH)
         * lateral_ratio
     )
-    if abs(dx) <= config.OVERHEAD_AXIS_DEADZONE_PX:
+    if abs(dx) <= soft_align_zone:
         approach_turn_strength = 0.0
 
     if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
@@ -281,12 +287,16 @@ def compute_overhead_command(target_point, frame_width, frame_height):
             return MOVE_RIGHT, dx, turn_strength
         return MOVE_LEFT, dx, turn_strength
 
-    if abs(dx) <= config.OVERHEAD_AXIS_DEADZONE_PX:
+    if abs(dx) <= soft_align_zone:
         return STOP, 0, 0.0
 
-    turn_strength = config.MIN_TURN_STRENGTH + (
-        (config.MAX_TURN_STRENGTH - config.MIN_TURN_STRENGTH)
-        * min(1.0, abs(dx) / max(frame_width / 2.0, 1.0))
+    pivot_ratio = min(
+        1.0,
+        max(0.0, abs(dx) - soft_align_zone) / float(max((frame_width / 2.0) - soft_align_zone, 1.0)),
+    )
+    turn_strength = config.OVERHEAD_PIVOT_TURN_MIN_STRENGTH + (
+        (config.OVERHEAD_PIVOT_TURN_MAX_STRENGTH - config.OVERHEAD_PIVOT_TURN_MIN_STRENGTH)
+        * pivot_ratio
     )
     if dx < 0:
         return MOVE_LEFT, dx, turn_strength
@@ -389,7 +399,7 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
             duty = config.MOTOR_FORWARD_DUTY
             if turn_strength > 0.0 and offset != 0:
                 outer_duty = duty
-                inner_ratio = max(0.2, 1.0 - turn_strength)
+                inner_ratio = max(0.45, 1.0 - (turn_strength * 0.7))
                 inner_duty = duty * inner_ratio
                 if offset < 0:
                     motor._drive(True, True, inner_duty, outer_duty)
@@ -401,7 +411,7 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
             duty = config.MOTOR_FORWARD_DUTY
             if turn_strength > 0.0 and offset != 0:
                 outer_duty = duty
-                inner_ratio = max(0.2, 1.0 - turn_strength)
+                inner_ratio = max(0.45, 1.0 - (turn_strength * 0.7))
                 inner_duty = duty * inner_ratio
                 if offset < 0:
                     motor._drive(False, False, inner_duty, outer_duty)

@@ -178,6 +178,8 @@ class ObjectDetector:
         self.model = self._load_model()
         self.class_names = self._load_class_names()
         self.target_labels = {label.strip().lower() for label in config.OBJECT_TARGET_LABELS if label.strip()}
+        self.last_candidates = []
+        self.last_target_mask = None
 
     def _load_model(self):
         model_path = Path(config.OBJECT_MODEL_PATH)
@@ -245,6 +247,13 @@ class ObjectDetector:
         if self.frame_count <= config.MOTION_WARMUP_FRAMES:
             return motion_mask, target_mask, []
 
+        detect_every = max(1, int(getattr(config, "OBJECT_DETECT_EVERY_N_FRAMES", 1)))
+        if detect_every > 1 and (self.frame_count % detect_every) != 0:
+            cached_mask = self.last_target_mask
+            if cached_mask is None or cached_mask.shape != target_mask.shape:
+                cached_mask = target_mask
+            return motion_mask, cached_mask, list(self.last_candidates)
+
         class_ids, confidences, boxes = self.model.detect(
             frame,
             confThreshold=config.OBJECT_CONFIDENCE_THRESHOLD,
@@ -252,6 +261,8 @@ class ObjectDetector:
         )
 
         if class_ids is None or len(class_ids) == 0:
+            self.last_candidates = []
+            self.last_target_mask = target_mask.copy()
             return motion_mask, target_mask, []
 
         search_top = int(frame_height * config.SEARCH_TOP_RATIO)
@@ -305,9 +316,14 @@ class ObjectDetector:
         candidates = candidates[: config.MAX_CANDIDATES]
 
         if not candidates:
+            self.last_candidates = []
+            self.last_target_mask = target_mask.copy()
             return motion_mask, target_mask, []
 
-        return motion_mask, target_mask, [(cnt, bbox) for cnt, _, bbox in candidates]
+        formatted_candidates = [(cnt, bbox) for cnt, _, bbox in candidates]
+        self.last_candidates = list(formatted_candidates)
+        self.last_target_mask = target_mask.copy()
+        return motion_mask, target_mask, formatted_candidates
 
 
 class HybridDetector:

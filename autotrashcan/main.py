@@ -4,7 +4,13 @@ import cv2
 
 import config
 from camera import create_capture, read_frame, release_capture
-from control_interface import compute_path_command, plan_path_to_target, send_motor_command, STOP
+from control_interface import (
+    STOP,
+    compute_path_command,
+    is_within_overhead_stop_zone,
+    plan_path_to_target,
+    send_motor_command,
+)
 from detection import create_detector
 from prediction import is_descending, predict_landing_point
 from tracking import ObjectTracker, TrackState
@@ -112,7 +118,14 @@ def main():
                 aim_point = target_center
                 predicted_point = None
 
-                if config.USE_PREDICTION and len(tracker.get_path()) >= config.MIN_TRACK_POINTS:
+                if config.CAMERA_FACING_UP and is_within_overhead_stop_zone(
+                    target_center,
+                    config.FRAME_WIDTH,
+                    config.FRAME_HEIGHT,
+                ):
+                    planned_path = plan_path_to_target(target_center, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+                    command = STOP
+                elif config.USE_PREDICTION and len(tracker.get_path()) >= config.MIN_TRACK_POINTS:
                     if not config.REQUIRE_DESCENDING_FOR_CHASE or is_descending(tracker.get_path(), fps):
                         predicted_point = predict_landing_point(
                             tracker.get_path(),
@@ -130,7 +143,7 @@ def main():
                         config.FRAME_HEIGHT,
                         target_bbox=current_bbox,
                     )
-                else:
+                elif command != STOP:
                     command = STOP
             else:
                 command = STOP

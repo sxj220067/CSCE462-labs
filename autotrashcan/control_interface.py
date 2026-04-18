@@ -234,10 +234,7 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     stop_dy = dy - config.OVERHEAD_STOP_Y_OFFSET_PX
     stop_error = math.hypot(stop_dx, stop_dy)
 
-    if (
-        abs(stop_dx) <= config.OVERHEAD_AXIS_DEADZONE_PX
-        and abs(stop_dy) <= config.OVERHEAD_STOP_Y_TOLERANCE_PX
-    ) or stop_error <= config.OVERHEAD_CENTER_RADIUS_PX:
+    if is_within_overhead_stop_zone(target_point, frame_width, frame_height):
         return STOP, 0, 0.0
 
     heading_angle_deg = math.degrees(math.atan2(dx, -dy))
@@ -301,6 +298,27 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     if dx < 0:
         return MOVE_LEFT, dx, turn_strength
     return MOVE_RIGHT, dx, turn_strength
+
+
+def is_within_overhead_stop_zone(target_point, frame_width, frame_height):
+    if target_point is None:
+        return False
+
+    center_x = frame_width // 2
+    center_y = frame_height // 2
+    dx = int(target_point[0] - center_x)
+    dy = int(target_point[1] - center_y)
+    stop_dx = dx
+    stop_dy = dy - config.OVERHEAD_STOP_Y_OFFSET_PX
+    stop_error = math.hypot(stop_dx, stop_dy)
+
+    return (
+        (
+            abs(stop_dx) <= config.OVERHEAD_AXIS_DEADZONE_PX
+            and abs(stop_dy) <= config.OVERHEAD_STOP_Y_TOLERANCE_PX
+        )
+        or stop_error <= config.OVERHEAD_CENTER_RADIUS_PX
+    )
 
 
 def compute_path_command(path_points, frame_width, frame_height, target_bbox=None):

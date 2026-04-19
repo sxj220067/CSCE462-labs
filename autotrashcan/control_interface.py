@@ -269,10 +269,12 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     if abs(dx) <= soft_align_zone:
         approach_turn_strength = 0.0
 
-    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
+    # For the current overhead camera mounting, targets lower in the frame are in
+    # front of the robot and targets higher in the frame are behind it.
+    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
         return MOVE_FORWARD, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 
-    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
+    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
         if config.OVERHEAD_REVERSE_ENABLED:
             return MOVE_REVERSE, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 

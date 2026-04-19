@@ -1,5 +1,7 @@
 import os
 import time
+import json
+from pathlib import Path
 import cv2
 
 import config
@@ -14,6 +16,95 @@ from control_interface import (
 from detection import create_detector
 from prediction import is_descending, predict_landing_point
 from tracking import ObjectTracker, TrackState
+
+
+def clamp(value, minimum, maximum):
+    return max(minimum, min(maximum, value))
+
+
+def load_learning_state():
+    if not config.SELF_LEARNING_ENABLED:
+        return 0.0, 0.0
+
+    path = Path(config.SELF_LEARNING_SAVE_PATH)
+    if not path.exists():
+        return 0.0, 0.0
+
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        return 0.0, 0.0
+
+    learned_x_bias = clamp(
+        float(data.get("x_bias", 0.0)),
+        -config.SELF_LEARNING_MAX_X_BIAS_PX,
+        config.SELF_LEARNING_MAX_X_BIAS_PX,
+    )
+    learned_y_bias = clamp(
+        float(data.get("y_bias", 0.0)),
+        -config.SELF_LEARNING_MAX_Y_BIAS_PX,
+        config.SELF_LEARNING_MAX_Y_BIAS_PX,
+    )
+    return learned_x_bias, learned_y_bias
+
+
+def save_learning_state(learned_x_bias, learned_y_bias):
+    if not config.SELF_LEARNING_ENABLED:
+        return
+
+    path = Path(config.SELF_LEARNING_SAVE_PATH)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "x_bias": round(learned_x_bias, 3),
+                    "y_bias": round(learned_y_bias, 3),
+                },
+                indent=2,
+            )
+        )
+    except Exception:
+        pass
+
+
+def apply_learning_bias(target_point, frame_width, frame_height, learned_x_bias, learned_y_bias):
+    if target_point is None:
+        return None
+
+    adjusted_x = int(round(target_point[0] + learned_x_bias))
+    adjusted_y = int(round(target_point[1] + learned_y_bias))
+    adjusted_x = clamp(adjusted_x, 0, frame_width - 1)
+    adjusted_y = clamp(adjusted_y, 0, frame_height - 1)
+    return adjusted_x, adjusted_y
+
+
+def update_learning_bias(learned_x_bias, learned_y_bias, target_center):
+    center_x = config.FRAME_WIDTH // 2
+    center_y = config.FRAME_HEIGHT // 2
+    dx = float(target_center[0] - center_x)
+    dy = float(target_center[1] - center_y)
+    stop_dy = dy - float(config.OVERHEAD_STOP_Y_OFFSET_PX)
+
+    if abs(dx) >= config.SELF_LEARNING_MIN_ERROR_PX:
+        learned_x_bias = clamp(
+            learned_x_bias + (dx * config.SELF_LEARNING_RATE),
+            -config.SELF_LEARNING_MAX_X_BIAS_PX,
+            config.SELF_LEARNING_MAX_X_BIAS_PX,
+        )
+    else:
+        learned_x_bias *= 0.98
+
+    if abs(stop_dy) >= config.SELF_LEARNING_MIN_ERROR_PX:
+        learned_y_bias = clamp(
+            learned_y_bias + (stop_dy * config.SELF_LEARNING_RATE),
+            -config.SELF_LEARNING_MAX_Y_BIAS_PX,
+            config.SELF_LEARNING_MAX_Y_BIAS_PX,
+        )
+    else:
+        learned_y_bias *= 0.98
+
+    return learned_x_bias, learned_y_bias
 
 
 def draw_status(frame, text, fps):
@@ -86,6 +177,9 @@ def main():
     last_turn_strength = 0.0
     last_command_sent_time = 0.0
     target_hold_until = 0.0
+    learned_x_bias, learned_y_bias = load_learning_state()
+    last_learning_update = 0.0
+    last_learning_save = time.time()
     try:
         while True:
             frame = read_frame(cap)
@@ -115,15 +209,26 @@ def main():
             if current_bbox is not None:
                 x, y, w, h = current_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
-                aim_point = target_center
-                predicted_point = None
-
-                if config.CAMERA_FACING_UP and is_within_overhead_stop_zone(
+                biased_target_center = apply_learning_bias(
                     target_center,
                     config.FRAME_WIDTH,
                     config.FRAME_HEIGHT,
+                    learned_x_bias,
+                    learned_y_bias,
+                )
+                aim_point = biased_target_center
+                predicted_point = None
+
+                if config.CAMERA_FACING_UP and is_within_overhead_stop_zone(
+                    biased_target_center,
+                    config.FRAME_WIDTH,
+                    config.FRAME_HEIGHT,
                 ):
-                    planned_path = plan_path_to_target(target_center, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+                    planned_path = plan_path_to_target(
+                        biased_target_center,
+                        config.FRAME_WIDTH,
+                        config.FRAME_HEIGHT,
+                    )
                     command = STOP
                 elif config.USE_PREDICTION and len(tracker.get_path()) >= config.MIN_TRACK_POINTS:
                     if not config.REQUIRE_DESCENDING_FOR_CHASE or is_descending(tracker.get_path(), fps):
@@ -135,7 +240,13 @@ def main():
                         )
 
                 if predicted_point is not None:
-                    aim_point = predicted_point
+                    aim_point = apply_learning_bias(
+                        predicted_point,
+                        config.FRAME_WIDTH,
+                        config.FRAME_HEIGHT,
+                        learned_x_bias,
+                        learned_y_bias,
+                    )
                     planned_path = plan_path_to_target(aim_point, config.FRAME_WIDTH, config.FRAME_HEIGHT)
                     command, offset, turn_strength = compute_path_command(
                         planned_path,
@@ -149,6 +260,20 @@ def main():
                 command = STOP
 
             now = time.time()
+
+            if (
+                config.SELF_LEARNING_ENABLED
+                and current_bbox is not None
+                and target_verified
+                and command == STOP
+                and (now - last_learning_update) >= config.SELF_LEARNING_UPDATE_INTERVAL_S
+            ):
+                learned_x_bias, learned_y_bias = update_learning_bias(
+                    learned_x_bias,
+                    learned_y_bias,
+                    target_center,
+                )
+                last_learning_update = now
 
             if command == STOP and current_bbox is not None and planned_path:
                 if target_hold_until <= now:
@@ -175,6 +300,10 @@ def main():
                 last_turn_strength = turn_strength
                 last_command_sent_time = now
 
+            if config.SELF_LEARNING_ENABLED and (now - last_learning_save) >= 1.0:
+                save_learning_state(learned_x_bias, learned_y_bias)
+                last_learning_save = now
+
             frame_count += 1
             if now - last_time >= 1.0:
                 fps = frame_count / (now - last_time)
@@ -186,7 +315,8 @@ def main():
                     f"[STATUS] state={state.name} fps={fps:.1f} "
                     f"candidates={tracker.candidate_count} tracked_points={len(tracker.get_path())} "
                     f"locked={tracker.is_locked()} cooldown={tracker.reacquire_cooldown} "
-                    f"stable={target_verified} command={command} strength={turn_strength:.2f}"
+                    f"stable={target_verified} command={command} strength={turn_strength:.2f} "
+                    f"learn_bias=({learned_x_bias:.1f},{learned_y_bias:.1f})"
                 )
                 last_status_print = now
 
@@ -235,6 +365,7 @@ def main():
         print("Interrupted by user")
 
     finally:
+        save_learning_state(learned_x_bias, learned_y_bias)
         release_capture(cap)
         cv2.destroyAllWindows()
 

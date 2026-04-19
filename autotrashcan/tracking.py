@@ -124,7 +124,7 @@ class ObjectTracker:
                 best_bbox = bbox
 
         if best_bbox is None:
-            if self.is_locked() and last_bbox is not None:
+            if self.is_locked() and last_bbox is not None and self.lost_frames < max(1, config.TRACK_LOST_MAX_FRAMES - 1):
                 return None
             return fallback_bbox
 

@@ -16,16 +16,6 @@ from prediction import is_descending, predict_landing_point
 from tracking import ObjectTracker, TrackState
 
 
-def compute_frame_stillness(prev_frame, current_frame):
-    if prev_frame is None or current_frame is None:
-        return 0.0
-
-    prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
-    curr_gray = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
-    diff = cv2.absdiff(prev_gray, curr_gray)
-    return float(diff.mean())
-
-
 def draw_status(frame, text, fps):
     cv2.putText(frame, f"Status: {text}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     cv2.putText(frame, f"FPS: {fps:.1f}", (10, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
@@ -96,15 +86,6 @@ def main():
     last_turn_strength = 0.0
     last_command_sent_time = 0.0
     target_hold_until = 0.0
-    prev_frame = None
-    move_until = 0.0
-    settle_started_at = 0.0
-    settle_until = 0.0
-    settle_command = STOP
-    settle_offset = 0
-    settle_turn_strength = 0.0
-    still_frame_count = 0
-    camera_stillness = 0.0
     try:
         while True:
             frame = read_frame(cap)
@@ -168,13 +149,6 @@ def main():
                 command = STOP
 
             now = time.time()
-            camera_stillness = compute_frame_stillness(prev_frame, frame)
-            prev_frame = frame.copy()
-
-            if camera_stillness <= config.CAMERA_STILL_DIFF_THRESHOLD:
-                still_frame_count += 1
-            else:
-                still_frame_count = 0
 
             if command == STOP and current_bbox is not None and planned_path:
                 if target_hold_until <= now:
@@ -194,54 +168,7 @@ def main():
                 or (now - last_command_sent_time) >= config.COMMAND_UPDATE_INTERVAL_S
             )
 
-            if config.STEP_MOVE_ENABLED:
-                if now < move_until:
-                    command = settle_command
-                    offset = settle_offset
-                    turn_strength = settle_turn_strength
-                elif move_until > 0.0 and now >= move_until:
-                    if last_command != STOP:
-                        send_motor_command(STOP, 0, 0.0)
-                        last_command = STOP
-                        last_offset = 0
-                        last_turn_strength = 0.0
-                        last_command_sent_time = now
-                    move_until = 0.0
-                    settle_started_at = now
-                    settle_until = now + config.STEP_SETTLE_MAX_S
-                    still_frame_count = 0
-
-                if move_until == 0.0 and now < settle_until:
-                    command = STOP
-                    offset = 0
-                    turn_strength = 0.0
-
-                    settle_ready = (
-                        now >= (settle_started_at + config.STEP_SETTLE_MIN_S)
-                        and still_frame_count >= config.CAMERA_STILL_CONSECUTIVE_FRAMES
-                    )
-                    settle_timed_out = now >= settle_until
-                    if settle_ready or settle_timed_out:
-                        settle_started_at = 0.0
-                        settle_until = 0.0
-
-                should_start_step = (
-                    command != STOP
-                    and move_until == 0.0
-                    and settle_until == 0.0
-                    and should_send_command
-                )
-                if should_start_step:
-                    send_motor_command(command, offset, turn_strength)
-                    last_command = command
-                    last_offset = offset
-                    last_turn_strength = turn_strength
-                    last_command_sent_time = now
-                    settle_command = command
-                    settle_offset = offset
-                    settle_turn_strength = turn_strength
-                    move_until = now + config.STEP_MOVE_DURATION_S
-            elif should_send_command:
+            if should_send_command:
                 send_motor_command(command, offset, turn_strength)
                 last_command = command
                 last_offset = offset
@@ -259,8 +186,7 @@ def main():
                     f"[STATUS] state={state.name} fps={fps:.1f} "
                     f"candidates={tracker.candidate_count} tracked_points={len(tracker.get_path())} "
                     f"locked={tracker.is_locked()} cooldown={tracker.reacquire_cooldown} "
-                    f"stable={target_verified} command={command} strength={turn_strength:.2f} "
-                    f"cam_diff={camera_stillness:.2f} still_frames={still_frame_count}"
+                    f"stable={target_verified} command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now
 

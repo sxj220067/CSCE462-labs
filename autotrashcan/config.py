@@ -153,8 +153,8 @@ RIGHT_MOTOR_SCALE = 1.0
 # - Reduce LEFT_MOTOR_SCALE or RIGHT_MOTOR_SCALE if one side consistently runs faster.
 # - Set LEFT_MOTOR_INVERTED or RIGHT_MOTOR_INVERTED to True if that side spins backward when forward is expected.
 # This project does not use a separate motor calibration file; these config values are the main adjustment points.
-LEFT_MOTOR_INVERTED = False
-RIGHT_MOTOR_INVERTED = True
+LEFT_MOTOR_INVERTED = True
+RIGHT_MOTOR_INVERTED = False
 
 # visual / behavior flags
 DEBUG_DRAW = True

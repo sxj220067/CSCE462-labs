@@ -57,9 +57,11 @@ class ObjectTracker:
         predicted_center = self.predict_next_center()
         last_bbox = self.get_last_bbox()
         last_area = None
+        last_aspect_ratio = None
         if last_bbox is not None:
             _, _, last_w, last_h = last_bbox
             last_area = max(last_w * last_h, 1)
+            last_aspect_ratio = float(last_w) / float(max(last_h, 1))
         best_bbox = None
         best_score = None
         fallback_bbox = None
@@ -84,8 +86,32 @@ class ObjectTracker:
                 distance_sq = dx * dx + dy * dy
                 if distance_sq > (config.MAX_TRACK_JUMP_PX * config.MAX_TRACK_JUMP_PX):
                     continue
+
+                iou = self._compute_iou(bbox, last_bbox) if last_bbox is not None else 0.0
+                aspect_ratio = float(w) / float(max(h, 1))
+                aspect_ratio_change = 1.0
+                if last_aspect_ratio is not None:
+                    aspect_ratio_change = max(aspect_ratio, last_aspect_ratio) / float(
+                        max(min(aspect_ratio, last_aspect_ratio), 1e-6)
+                    )
+
+                if self.is_locked():
+                    if (
+                        iou < config.TRACK_LOCKED_MIN_IOU
+                        and distance_sq
+                        > (config.TRACK_LOCKED_MAX_CENTER_DRIFT_PX * config.TRACK_LOCKED_MAX_CENTER_DRIFT_PX)
+                    ):
+                        continue
+                    if aspect_ratio_change > config.TRACK_LOCKED_MAX_ASPECT_RATIO_CHANGE:
+                        continue
+
                 lock_bonus = config.TARGET_LOCK_BONUS if self.is_locked() else (config.TARGET_LOCK_BONUS * 0.3)
-                score = area + lock_bonus - distance_sq
+                score = (
+                    area
+                    + lock_bonus
+                    + (iou * config.TRACK_LOCKED_IOU_BONUS)
+                    - (distance_sq * config.TRACK_LOCKED_DISTANCE_PENALTY)
+                )
 
                 if last_area is not None:
                     area_ratio = max(area, last_area) / float(min(area, last_area))
@@ -98,9 +124,34 @@ class ObjectTracker:
                 best_bbox = bbox
 
         if best_bbox is None:
+            if self.is_locked() and last_bbox is not None:
+                return None
             return fallback_bbox
 
         return best_bbox
+
+    def _compute_iou(self, bbox_a, bbox_b):
+        if bbox_a is None or bbox_b is None:
+            return 0.0
+
+        ax, ay, aw, ah = bbox_a
+        bx, by, bw, bh = bbox_b
+
+        inter_x1 = max(ax, bx)
+        inter_y1 = max(ay, by)
+        inter_x2 = min(ax + aw, bx + bw)
+        inter_y2 = min(ay + ah, by + bh)
+
+        inter_w = max(0, inter_x2 - inter_x1)
+        inter_h = max(0, inter_y2 - inter_y1)
+        inter_area = inter_w * inter_h
+        if inter_area <= 0:
+            return 0.0
+
+        area_a = max(aw * ah, 1)
+        area_b = max(bw * bh, 1)
+        union_area = max(area_a + area_b - inter_area, 1)
+        return inter_area / float(union_area)
 
     def predict_next_center(self):
         if len(self.centers) < 2:

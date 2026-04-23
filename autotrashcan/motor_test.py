@@ -41,7 +41,7 @@ def run_command(motor, command):
         motor.move_forward()
     elif command == "br":
         print("Output: both motors reverse")
-        motor._drive(False, False, config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY)
+        motor._drive(False, False, config.MOTOR_REVERSE_DUTY, config.MOTOR_REVERSE_DUTY)
     elif command == "sl":
         print("Output: spin left")
         motor.move_left()

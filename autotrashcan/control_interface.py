@@ -125,7 +125,7 @@ class L298NMotorController:
         self._drive(True, True, config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY)
 
     def move_reverse(self):
-        self._drive(False, False, config.MOTOR_FORWARD_DUTY, config.MOTOR_FORWARD_DUTY)
+        self._drive(False, False, config.MOTOR_REVERSE_DUTY, config.MOTOR_REVERSE_DUTY)
 
     def stop(self):
         _safe_device_call(self.left_enable, "off")
@@ -428,7 +428,7 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
             else:
                 motor._drive(True, True, duty, duty)
         elif command == MOVE_REVERSE:
-            duty = config.MOTOR_FORWARD_DUTY
+            duty = config.MOTOR_REVERSE_DUTY
             if turn_strength > 0.0 and offset != 0:
                 outer_duty = duty
                 inner_ratio = max(0.45, 1.0 - (turn_strength * 0.7))

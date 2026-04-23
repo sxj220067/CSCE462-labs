@@ -154,11 +154,13 @@ L298N_RIGHT_IN3_PIN = 23
 L298N_RIGHT_IN4_PIN = 24
 L298N_PWM_FREQUENCY = 1000
 MOTOR_FORWARD_DUTY = 0.25
+MOTOR_REVERSE_DUTY = 0.4
 MOTOR_TURN_DUTY = 0.25
 LEFT_MOTOR_SCALE = 1.0
 RIGHT_MOTOR_SCALE = 1.0
 # Motor tuning notes for real hardware:
 # - Increase MOTOR_FORWARD_DUTY if the robot does not move or feels too slow.
+# - Increase MOTOR_REVERSE_DUTY if reverse just hums or buzzes instead of rolling backward.
 # - Decrease MOTOR_FORWARD_DUTY if the robot moves too fast or overshoots.
 # - Increase MOTOR_TURN_DUTY if turns are too weak or too slow.
 # - Decrease MOTOR_TURN_DUTY if turns are too sharp, jerky, or unstable.

@@ -136,6 +136,7 @@ Current motion mapping with two motors:
 - `MOVE_LEFT`: pivot left by reversing the left motor and driving the right motor forward
 - `MOVE_RIGHT`: pivot right by driving the left motor forward and reversing the right motor
 - `MOVE_FORWARD`: both motors forward at cruising duty cycle
+- `MOVE_REVERSE`: both motors backward at the reverse duty cycle
 - `STOP`: both motors off
 
 ## Keys

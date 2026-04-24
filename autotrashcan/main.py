@@ -126,6 +126,7 @@ def main():
     last_command_sent_time = 0.0
     locked_bbox = None
     lost_lock_frames = 0
+    initial_lock_acquired = False
     try:
         while True:
             frame = read_frame(cap)
@@ -134,25 +135,35 @@ def main():
                 continue
 
             motion_mask, thresh_mask, candidates = detector.detect(frame)
-            current_bbox = _select_locked_bbox(candidates, locked_bbox)
+            if not initial_lock_acquired:
+                current_bbox = candidates[0][1] if candidates else None
+            else:
+                current_bbox = _select_locked_bbox(candidates, locked_bbox)
 
             if current_bbox is not None:
                 locked_bbox = current_bbox
                 lost_lock_frames = 0
+                initial_lock_acquired = True
             elif locked_bbox is not None and lost_lock_frames < config.TRACK_LOST_MAX_FRAMES:
                 current_bbox = locked_bbox
                 lost_lock_frames += 1
             else:
-                locked_bbox = None
-                lost_lock_frames = 0
+                if not initial_lock_acquired:
+                    locked_bbox = None
+                lost_lock_frames = config.TRACK_LOST_MAX_FRAMES
 
             aim_point = None
             command = STOP
             offset = 0
             turn_strength = 0.0
-            state = "LOCKED" if locked_bbox is not None else "SEARCHING"
+            if locked_bbox is not None and current_bbox is not None:
+                state = "LOCKED"
+            elif initial_lock_acquired:
+                state = "LOST_LOCK"
+            else:
+                state = "SEARCHING"
 
-            if current_bbox is not None:
+            if current_bbox is not None and state == "LOCKED":
                 x, y, w, h = current_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
                 aim_point = target_center

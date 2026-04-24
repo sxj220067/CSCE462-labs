@@ -419,9 +419,11 @@ def send_motor_command(command, offset=0, turn_strength=0.0):
 
     try:
         if command == MOVE_LEFT:
-            motor.move_left()
+            steer_strength = turn_strength if turn_strength > 0.0 else config.MIN_TURN_STRENGTH
+            motor._steer(MOVE_LEFT, min(config.VISUAL_TURN_MAX_STRENGTH, steer_strength))
         elif command == MOVE_RIGHT:
-            motor.move_right()
+            steer_strength = turn_strength if turn_strength > 0.0 else config.MIN_TURN_STRENGTH
+            motor._steer(MOVE_RIGHT, min(config.VISUAL_TURN_MAX_STRENGTH, steer_strength))
         elif command == MOVE_FORWARD:
             duty = config.MOTOR_FORWARD_DUTY
             if turn_strength > 0.0 and offset != 0:

@@ -13,6 +13,45 @@ from control_interface import (
 from detection import create_detector
 
 
+def _bbox_center(bbox):
+    x, y, w, h = bbox
+    return int(x + (w / 2)), int(y + (h / 2))
+
+
+def _select_locked_bbox(candidates, locked_bbox):
+    if not candidates:
+        return None
+
+    if locked_bbox is None:
+        return candidates[0][1]
+
+    locked_center = _bbox_center(locked_bbox)
+    _, _, locked_w, locked_h = locked_bbox
+    locked_area = max(locked_w * locked_h, 1)
+    best_bbox = None
+    best_distance_sq = None
+
+    for _, bbox in candidates:
+        center = _bbox_center(bbox)
+        dx = center[0] - locked_center[0]
+        dy = center[1] - locked_center[1]
+        distance_sq = (dx * dx) + (dy * dy)
+        if distance_sq > (config.MAX_TRACK_JUMP_PX * config.MAX_TRACK_JUMP_PX):
+            continue
+
+        _, _, w, h = bbox
+        area = max(w * h, 1)
+        area_ratio = max(area, locked_area) / float(min(area, locked_area))
+        if area_ratio > config.TARGET_AREA_CHANGE_MAX_RATIO:
+            continue
+
+        if best_distance_sq is None or distance_sq < best_distance_sq:
+            best_distance_sq = distance_sq
+            best_bbox = bbox
+
+    return best_bbox
+
+
 def draw_status(frame, text, fps):
     cv2.putText(frame, f"Status: {text}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     cv2.putText(frame, f"FPS: {fps:.1f}", (10, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
@@ -85,6 +124,8 @@ def main():
     last_offset = 0
     last_turn_strength = 0.0
     last_command_sent_time = 0.0
+    locked_bbox = None
+    lost_lock_frames = 0
     try:
         while True:
             frame = read_frame(cap)
@@ -93,13 +134,23 @@ def main():
                 continue
 
             motion_mask, thresh_mask, candidates = detector.detect(frame)
-            current_bbox = candidates[0][1] if candidates else None
+            current_bbox = _select_locked_bbox(candidates, locked_bbox)
+
+            if current_bbox is not None:
+                locked_bbox = current_bbox
+                lost_lock_frames = 0
+            elif locked_bbox is not None and lost_lock_frames < config.TRACK_LOST_MAX_FRAMES:
+                current_bbox = locked_bbox
+                lost_lock_frames += 1
+            else:
+                locked_bbox = None
+                lost_lock_frames = 0
 
             aim_point = None
             command = STOP
             offset = 0
             turn_strength = 0.0
-            state = "DETECTED" if current_bbox is not None else "SEARCHING"
+            state = "LOCKED" if locked_bbox is not None else "SEARCHING"
 
             if current_bbox is not None:
                 x, y, w, h = current_bbox
@@ -145,7 +196,8 @@ def main():
                 print(
                     f"[STATUS] state={state} fps={fps:.1f} "
                     f"candidates={len(candidates)} "
-                    f"detected={current_bbox is not None} command={command} strength={turn_strength:.2f}"
+                    f"detected={current_bbox is not None} lost_lock={lost_lock_frames} "
+                    f"command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now
 

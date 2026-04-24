@@ -127,9 +127,6 @@ def main():
     locked_bbox = None
     lost_lock_frames = 0
     initial_lock_acquired = False
-    remembered_target_point = None
-    remembered_target_bbox = None
-    remembered_target_until = 0.0
     try:
         while True:
             frame = read_frame(cap)
@@ -152,8 +149,8 @@ def main():
                 current_bbox = locked_bbox
                 lost_lock_frames += 1
             else:
-                if not initial_lock_acquired:
-                    locked_bbox = None
+                locked_bbox = None
+                initial_lock_acquired = False
                 lost_lock_frames = config.TRACK_LOST_MAX_FRAMES
 
             aim_point = None
@@ -171,9 +168,6 @@ def main():
                 x, y, w, h = current_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
                 aim_point = target_center
-                remembered_target_point = target_center
-                remembered_target_bbox = current_bbox
-                remembered_target_until = now + config.TARGET_MEMORY_DURATION_S
 
                 if config.CAMERA_FACING_UP:
                     command, offset, turn_strength = compute_overhead_command(
@@ -187,26 +181,6 @@ def main():
                         config.FRAME_WIDTH,
                         config.FRAME_HEIGHT,
                     )
-            elif remembered_target_point is not None and now <= remembered_target_until:
-                aim_point = remembered_target_point
-                state = "MEMORY"
-
-                if config.CAMERA_FACING_UP:
-                    command, offset, turn_strength = compute_overhead_command(
-                        remembered_target_point,
-                        config.FRAME_WIDTH,
-                        config.FRAME_HEIGHT,
-                    )
-                elif remembered_target_bbox is not None:
-                    command, offset, turn_strength = compute_approach_command(
-                        remembered_target_bbox,
-                        config.FRAME_WIDTH,
-                        config.FRAME_HEIGHT,
-                    )
-            else:
-                remembered_target_point = None
-                remembered_target_bbox = None
-                remembered_target_until = 0.0
 
             should_send_command = (
                 command != last_command
@@ -233,7 +207,6 @@ def main():
                     f"[STATUS] state={state} fps={fps:.1f} "
                     f"candidates={len(candidates)} "
                     f"detected={current_bbox is not None} lost_lock={lost_lock_frames} "
-                    f"memory={remembered_target_point is not None and now <= remembered_target_until} "
                     f"command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now

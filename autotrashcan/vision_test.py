@@ -70,7 +70,6 @@ def main():
 
     print("Vision test starting.")
     print("Show the target object to the camera.")
-    print(f"Detector mode: {config.DETECTOR_MODE}")
     print("Press q or Esc to quit.")
 
     try:

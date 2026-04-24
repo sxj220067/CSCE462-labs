@@ -7,16 +7,15 @@ This project is a modular, Python-based vision pipeline for a Raspberry Pi trash
 - Continuous camera frame acquisition
 - Motion-based trash candidate detection
 - Object tracking in image space
-- 2D trajectory prediction in image space
+- Simple target following in image space
 - Simple left/right/forward command output interface
 - Debug display with overlays
 
 ## Project structure
-- `main.py`: orchestration loop (capture -> detection -> tracking -> prediction -> control)
+- `main.py`: orchestration loop (capture -> detection -> tracking -> control)
 - `camera.py`: camera capture wrapper (OpenCV VideoCapture)
 - `detection.py`: background subtraction + contour filtering
 - `tracking.py`: centroid-based tracked path and state machine
-- `prediction.py`: velocity estimation + landing point prediction
 - `control_interface.py`: action command mapping + motor stub
 - `config.py`: all tunable thresholds and runtime flags
 - `README.md`: this file

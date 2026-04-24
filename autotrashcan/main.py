@@ -6,13 +6,11 @@ import config
 from camera import create_capture, read_frame, release_capture
 from control_interface import (
     STOP,
-    compute_path_command,
-    is_within_overhead_stop_zone,
-    plan_path_to_target,
+    compute_approach_command,
+    compute_overhead_command,
     send_motor_command,
 )
 from detection import create_detector
-from tracking import ObjectTracker
 
 
 def draw_status(frame, text, fps):
@@ -20,14 +18,10 @@ def draw_status(frame, text, fps):
     cv2.putText(frame, f"FPS: {fps:.1f}", (10, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
 
-def draw_tracking(frame, tracker, predicted_point, planned_path, target_verified):
-    if tracker.get_last_bbox() is not None:
-        x, y, w, h = tracker.get_last_bbox()
+def draw_tracking(frame, current_bbox, predicted_point):
+    if current_bbox is not None:
+        x, y, w, h = current_bbox
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 128, 255), 2)
-
-    path = tracker.get_path()
-    for pt in path:
-        cv2.circle(frame, pt, 3, (0, 255, 255), -1)
 
     if predicted_point is not None:
         cv2.circle(frame, predicted_point, 8, (0, 0, 255), 2)
@@ -41,16 +35,6 @@ def draw_tracking(frame, tracker, predicted_point, planned_path, target_verified
             2,
         )
 
-    if planned_path:
-        for idx in range(len(planned_path) - 1):
-            cv2.line(frame, planned_path[idx], planned_path[idx + 1], (255, 0, 255), 2)
-        for point in planned_path:
-            cv2.circle(frame, point, 4, (255, 0, 255), -1)
-
-    verification_color = (0, 200, 0) if target_verified else (0, 165, 255)
-    verification_text = "Target checked" if target_verified else "Checking target"
-    cv2.putText(frame, verification_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, verification_color, 2)
-
     if config.CAMERA_FACING_UP:
         frame_center = (config.FRAME_WIDTH // 2, config.FRAME_HEIGHT // 2)
         cv2.circle(frame, frame_center, config.OVERHEAD_CENTER_RADIUS_PX, (255, 255, 255), 1)
@@ -60,7 +44,6 @@ def draw_tracking(frame, tracker, predicted_point, planned_path, target_verified
 def main():
     cap = create_capture()
     detector = create_detector()
-    tracker = ObjectTracker()
     has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
     window_enabled = config.SHOW_WINDOW and has_display
     last_status_print = time.time()
@@ -83,7 +66,6 @@ def main():
     last_offset = 0
     last_turn_strength = 0.0
     last_command_sent_time = 0.0
-    target_hold_until = 0.0
     try:
         while True:
             frame = read_frame(cap)
@@ -92,63 +74,33 @@ def main():
                 continue
 
             motion_mask, thresh_mask, candidates = detector.detect(frame)
-            state = tracker.get_state()
-
-            current_bbox = None
-            if candidates:
-                current_bbox = tracker.select_best_candidate(candidates)
-                tracker.update(current_bbox)
-                state = tracker.get_state()
-            else:
-                tracker.update(None)
-                state = tracker.get_state()
+            current_bbox = candidates[0][1] if candidates else None
 
             aim_point = None
-            planned_path = []
             command = STOP
             offset = 0
             turn_strength = 0.0
-            target_verified = tracker.is_target_stable()
+            state = "DETECTED" if current_bbox is not None else "SEARCHING"
 
             if current_bbox is not None:
                 x, y, w, h = current_bbox
                 target_center = (int(x + w / 2), int(y + h / 2))
                 aim_point = target_center
 
-                if config.CAMERA_FACING_UP and is_within_overhead_stop_zone(
-                    target_center,
-                    config.FRAME_WIDTH,
-                    config.FRAME_HEIGHT,
-                ):
-                    planned_path = plan_path_to_target(
+                if config.CAMERA_FACING_UP:
+                    command, offset, turn_strength = compute_overhead_command(
                         target_center,
                         config.FRAME_WIDTH,
                         config.FRAME_HEIGHT,
                     )
-                    command = STOP
                 else:
-                    planned_path = plan_path_to_target(aim_point, config.FRAME_WIDTH, config.FRAME_HEIGHT)
-                    command, offset, turn_strength = compute_path_command(
-                        planned_path,
+                    command, offset, turn_strength = compute_approach_command(
+                        current_bbox,
                         config.FRAME_WIDTH,
                         config.FRAME_HEIGHT,
-                        target_bbox=current_bbox,
                     )
-            else:
-                command = STOP
 
             now = time.time()
-
-            if command == STOP and current_bbox is not None and planned_path:
-                if target_hold_until <= now:
-                    target_hold_until = now + config.OVERHEAD_TARGET_HOLD_S
-
-            if now < target_hold_until:
-                command = STOP
-                offset = 0
-                turn_strength = 0.0
-            elif current_bbox is None:
-                target_hold_until = 0.0
 
             should_send_command = (
                 command != last_command
@@ -172,16 +124,15 @@ def main():
 
             if now - last_status_print >= config.STATUS_PRINT_INTERVAL:
                 print(
-                    f"[STATUS] state={state.name} fps={fps:.1f} "
-                    f"candidates={tracker.candidate_count} tracked_points={len(tracker.get_path())} "
-                    f"locked={tracker.is_locked()} cooldown={tracker.reacquire_cooldown} "
-                    f"stable={target_verified} command={command} strength={turn_strength:.2f}"
+                    f"[STATUS] state={state} fps={fps:.1f} "
+                    f"candidates={len(candidates)} "
+                    f"detected={current_bbox is not None} command={command} strength={turn_strength:.2f}"
                 )
                 last_status_print = now
 
             if config.DEBUG_DRAW:
-                draw_tracking(frame, tracker, aim_point, planned_path, target_verified)
-                draw_status(frame, state.name, fps)
+                draw_tracking(frame, current_bbox, aim_point)
+                draw_status(frame, state, fps)
                 cv2.line(
                     frame,
                     (config.FRAME_WIDTH // 2, 0),

@@ -22,9 +22,28 @@ def draw_tracking(frame, current_bbox, predicted_point):
     if current_bbox is not None:
         x, y, w, h = current_bbox
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 128, 255), 2)
+        cv2.circle(frame, predicted_point, 5, (0, 0, 255), -1)
+        cv2.putText(
+            frame,
+            f"target ({x + (w // 2)}, {y + (h // 2)})",
+            (10, 70),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 200, 255),
+            2,
+        )
+    else:
+        cv2.putText(
+            frame,
+            "No target detected",
+            (10, 70),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 0, 255),
+            2,
+        )
 
     if predicted_point is not None:
-        cv2.circle(frame, predicted_point, 8, (0, 0, 255), 2)
         cv2.putText(
             frame,
             "Aim",
@@ -130,9 +149,9 @@ def main():
                 )
                 last_status_print = now
 
-            if config.DEBUG_DRAW:
+            if window_enabled or config.DEBUG_DRAW:
                 draw_tracking(frame, current_bbox, aim_point)
-                draw_status(frame, state, fps)
+                draw_status(frame, f"{state} {command}", fps)
                 cv2.line(
                     frame,
                     (config.FRAME_WIDTH // 2, 0),

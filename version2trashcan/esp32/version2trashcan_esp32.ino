@@ -12,6 +12,11 @@ const int RIGHT_ENABLE = 32;
 const int DRIVE_PWM = 210;
 const int TURN_PWM = 200;
 
+void logState(const char *message) {
+  Serial.print("[ESP32] ");
+  Serial.println(message);
+}
+
 void stopMotors() {
   ledcWrite(LEFT_ENABLE, 0);
   ledcWrite(RIGHT_ENABLE, 0);
@@ -19,6 +24,7 @@ void stopMotors() {
   digitalWrite(LEFT_IN2, LOW);
   digitalWrite(RIGHT_IN1, LOW);
   digitalWrite(RIGHT_IN2, LOW);
+  logState("STOP");
 }
 
 void moveForward() {
@@ -28,6 +34,7 @@ void moveForward() {
   digitalWrite(RIGHT_IN2, LOW);
   ledcWrite(LEFT_ENABLE, DRIVE_PWM);
   ledcWrite(RIGHT_ENABLE, DRIVE_PWM);
+  logState("FORWARD");
 }
 
 void turnLeft() {
@@ -37,6 +44,7 @@ void turnLeft() {
   digitalWrite(RIGHT_IN2, LOW);
   ledcWrite(LEFT_ENABLE, TURN_PWM);
   ledcWrite(RIGHT_ENABLE, TURN_PWM);
+  logState("LEFT");
 }
 
 void turnRight() {
@@ -46,9 +54,13 @@ void turnRight() {
   digitalWrite(RIGHT_IN2, HIGH);
   ledcWrite(LEFT_ENABLE, TURN_PWM);
   ledcWrite(RIGHT_ENABLE, TURN_PWM);
+  logState("RIGHT");
 }
 
 void applyCommand(char command) {
+  Serial.print("[ESP32] Received command: ");
+  Serial.println(command);
+
   if (command == 'F') {
     moveForward();
   } else if (command == 'L') {
@@ -73,7 +85,8 @@ void setup() {
   ledcAttach(RIGHT_ENABLE, 1000, 8);
 
   stopMotors();
-  Serial.println("Version2TrashCan ESP32 ready");
+  Serial.println("[ESP32] Version2TrashCan ESP32 ready");
+  Serial.println("[ESP32] Bluetooth device name: Version2TrashCan");
 }
 
 void loop() {
@@ -83,7 +96,5 @@ void loop() {
       continue;
     }
     applyCommand(command);
-    Serial.print("Received command: ");
-    Serial.println(command);
   }
 }

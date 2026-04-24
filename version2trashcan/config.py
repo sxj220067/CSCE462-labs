@@ -24,14 +24,13 @@ MAX_TARGET_AREA = 35000
 # HSV ranges are in OpenCV format: H in [0,179], S/V in [0,255].
 # Adjust these for your real lighting and tape/object colors.
 FRONT_MARKER_HSV_RANGES = (
-    ((0, 110, 80), (12, 255, 255)),
-    ((170, 110, 80), (179, 255, 255)),
+    ((140, 70, 80), (179, 255, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
-    ((95, 110, 60), (130, 255, 255)),
+    ((40, 70, 50), (90, 255, 255)),
 )
 TARGET_HSV_RANGES = (
-    ((35, 70, 50), (85, 255, 255)),
+    ((22, 70, 70), (42, 255, 255)),
 )
 
 # Target lock behavior
@@ -45,11 +44,15 @@ DISTANCE_STOP_PX = 55.0
 FORWARD_ONLY_WHEN_ALIGNED = True
 COMMAND_UPDATE_INTERVAL_S = 0.10
 
-# Serial transport to Arduino
-COMMAND_TRANSPORT = "stdout"  # "stdout" or "serial"
+# Command transport to ESP32
+COMMAND_TRANSPORT = "bluetooth"  # "stdout", "serial", or "bluetooth"
 SERIAL_PORT = "/dev/ttyUSB0"
 SERIAL_BAUDRATE = 9600
 SERIAL_TIMEOUT_S = 0.25
+BLUETOOTH_DEVICE_NAME = "Version2TrashCan"
+BLUETOOTH_MAC_ADDRESS = "D0:EF:76:44:84:52"
+BLUETOOTH_CHANNEL = 1
+BLUETOOTH_CONNECT_TIMEOUT_S = 8.0
 
 # Supported commands
 CMD_FORWARD = "F"

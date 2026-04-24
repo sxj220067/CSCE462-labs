@@ -8,6 +8,10 @@ from camera import create_capture, read_frame, release_capture
 from detection import create_detector
 
 
+def _overhead_forward_sign():
+    return -1 if config.OVERHEAD_FRONT_IS_NEGATIVE_Y else 1
+
+
 def describe_position(bbox, frame_width, frame_height):
     if bbox is None:
         return "no target", "unknown"
@@ -21,6 +25,8 @@ def describe_position(bbox, frame_width, frame_height):
     y_offset = center_y - (frame_height // 2)
 
     if config.CAMERA_FACING_UP:
+        forward_axis = _overhead_forward_sign() * y_offset
+
         if x_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
             horizontal = "left"
         elif x_offset > config.OVERHEAD_AXIS_DEADZONE_PX:
@@ -28,9 +34,9 @@ def describe_position(bbox, frame_width, frame_height):
         else:
             horizontal = "centered-x"
 
-        if y_offset < -config.OVERHEAD_AXIS_DEADZONE_PX:
+        if forward_axis > config.OVERHEAD_AXIS_DEADZONE_PX:
             vertical = "ahead"
-        elif y_offset > config.OVERHEAD_AXIS_DEADZONE_PX:
+        elif forward_axis < -config.OVERHEAD_AXIS_DEADZONE_PX:
             vertical = "behind"
         else:
             vertical = "centered-y"

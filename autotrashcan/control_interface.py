@@ -15,6 +15,14 @@ _motor_init_error = None
 _motor_warning_printed = False
 
 
+def _overhead_forward_sign():
+    return -1 if config.OVERHEAD_FRONT_IS_NEGATIVE_Y else 1
+
+
+def _overhead_stop_y_offset():
+    return _overhead_forward_sign() * abs(config.OVERHEAD_STOP_Y_OFFSET_PX)
+
+
 def _safe_device_call(device, method_name):
     if device is None:
         return
@@ -230,8 +238,9 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     center_y = frame_height // 2
     dx = int(target_point[0] - center_x)
     dy = int(target_point[1] - center_y)
+    forward_axis = _overhead_forward_sign() * dy
     stop_dx = dx
-    stop_dy = dy - config.OVERHEAD_STOP_Y_OFFSET_PX
+    stop_dy = dy - _overhead_stop_y_offset()
     stop_error = math.hypot(stop_dx, stop_dy)
 
     if is_within_overhead_stop_zone(target_point, frame_width, frame_height):
@@ -269,12 +278,10 @@ def compute_overhead_command(target_point, frame_width, frame_height):
     if abs(dx) <= soft_align_zone:
         approach_turn_strength = 0.0
 
-    # For the current overhead camera mounting, targets higher in the frame are in
-    # front of the robot and targets lower in the frame are behind it.
-    if dy < -config.OVERHEAD_AXIS_DEADZONE_PX:
+    if forward_axis > config.OVERHEAD_AXIS_DEADZONE_PX:
         return MOVE_FORWARD, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 
-    if dy > config.OVERHEAD_AXIS_DEADZONE_PX:
+    if forward_axis < -config.OVERHEAD_AXIS_DEADZONE_PX:
         if config.OVERHEAD_REVERSE_ENABLED:
             return MOVE_REVERSE, dx, min(1.0, approach_scale * max(approach_turn_strength, 0.0))
 
@@ -311,7 +318,7 @@ def is_within_overhead_stop_zone(target_point, frame_width, frame_height):
     dx = int(target_point[0] - center_x)
     dy = int(target_point[1] - center_y)
     stop_dx = dx
-    stop_dy = dy - config.OVERHEAD_STOP_Y_OFFSET_PX
+    stop_dy = dy - _overhead_stop_y_offset()
     stop_error = math.hypot(stop_dx, stop_dy)
 
     return (

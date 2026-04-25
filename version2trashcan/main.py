@@ -15,20 +15,20 @@ def draw_detection(frame, can_state, target, command, telemetry):
         front = can_state["front"]["center"]
         back = can_state["back"]["center"]
         center = can_state["center"]
-        cv2.circle(frame, front, 8, (0, 0, 255), -1)
-        cv2.circle(frame, back, 8, (255, 0, 0), -1)
+        cv2.circle(frame, front, 8, (203, 192, 255), -1)
+        cv2.circle(frame, back, 8, (0, 255, 0), -1)
         cv2.circle(frame, center, 6, (255, 255, 255), -1)
         cv2.line(frame, back, front, (255, 255, 255), 2)
-        cv2.putText(frame, "front", (front[0] + 8, front[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-        cv2.putText(frame, "back", (back[0] + 8, back[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        cv2.putText(frame, "front", (front[0] + 8, front[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (203, 192, 255), 2)
+        cv2.putText(frame, "back", (back[0] + 8, back[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     else:
         cv2.putText(frame, "Trash can markers not found", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
     if target is not None:
         x, y, w, h = target["bbox"]
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
         cv2.circle(frame, target["center"], 5, (0, 255, 255), -1)
-        cv2.putText(frame, "target", (x, max(20, y - 8)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(frame, "target", (x, max(20, y - 8)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
     else:
         cv2.putText(frame, "Target not found", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
 

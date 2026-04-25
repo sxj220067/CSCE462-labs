@@ -14,16 +14,16 @@ The fixed camera watches:
 - the target object
 
 The trash can should have two visible markers:
-- front marker: red
-- back marker: blue
+- front marker: pink
+- back marker: green
 
 The target object should use one detectable color:
-- target: green by default
+- target: yellow by default
 
 ## How it works
 
-1. Detect the red front marker.
-2. Detect the blue back marker.
+1. Detect the pink front marker.
+2. Detect the green back marker.
 3. Compute the trash can center and heading.
 4. Detect the target object.
 5. Lock onto the first target.

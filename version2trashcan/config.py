@@ -52,7 +52,6 @@ DISTANCE_STOP_PX = 55.0
 FORWARD_ONLY_WHEN_ALIGNED = True
 COMMAND_UPDATE_INTERVAL_S = 0.20
 COMMAND_CHANGE_CONFIRMATIONS = 3
-SWAP_TURN_COMMANDS = True
 
 # Command transport to ESP32
 COMMAND_TRANSPORT = "bluetooth"  # "stdout", "serial", or "bluetooth"

@@ -5,11 +5,6 @@ import config
 
 
 def format_command(command, telemetry=None):
-    if config.SWAP_TURN_COMMANDS:
-        if command == config.CMD_LEFT:
-            command = config.CMD_RIGHT
-        elif command == config.CMD_RIGHT:
-            command = config.CMD_LEFT
     if command in {config.CMD_LEFT, config.CMD_RIGHT} and telemetry is not None:
         return f"{command}:{int(telemetry.get('turn_strength', 100))}"
     return command

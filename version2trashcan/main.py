@@ -10,7 +10,7 @@ from detection import create_detector
 from transport import create_transport
 
 
-def draw_detection(frame, can_state, target, command, telemetry):
+def draw_detection(frame, can_state, target, command, telemetry, home_center=None, returning_home=False):
     if can_state is not None:
         front = can_state["front"]["center"]
         back = can_state["back"]["center"]
@@ -32,15 +32,21 @@ def draw_detection(frame, can_state, target, command, telemetry):
     else:
         cv2.putText(frame, "Target not found", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
 
+    if home_center is not None:
+        cv2.drawMarker(frame, home_center, (255, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=18, thickness=2)
+        cv2.putText(frame, "home", (home_center[0] + 8, home_center[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+
     if can_state is not None and target is not None:
         cv2.line(frame, can_state["center"], target["center"], (0, 255, 255), 2)
+    elif can_state is not None and returning_home and home_center is not None:
+        cv2.line(frame, can_state["center"], home_center, (255, 255, 0), 2)
 
     dist_px = telemetry["distance_px"]
     angle_deg = telemetry["angle_deg"]
     cv2.putText(frame, f"Command: {command}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2)
     cv2.putText(frame, f"Distance px: {dist_px if dist_px is not None else 'n/a'}", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
     cv2.putText(frame, f"Angle deg: {angle_deg if angle_deg is not None else 'n/a'}", (10, 135), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
-    cv2.putText(frame, "q/Esc quit, r reset target lock", (10, config.FRAME_HEIGHT - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+    cv2.putText(frame, "q/Esc quit, r reset target, h set home", (10, config.FRAME_HEIGHT - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
 
 def main():
@@ -56,6 +62,7 @@ def main():
     pending_command_count = 0
     locked_target = None
     missed_target_frames = 0
+    home_center = None
 
     print(
         f"Version2TrashCan starting: backend={config.CAMERA_BACKEND}, "
@@ -71,6 +78,9 @@ def main():
             result = detector.detect(frame)
             can_state = result["can_state"]
             candidate_targets = result["target_candidates"]
+            if home_center is None and can_state is not None:
+                home_center = can_state["center"]
+                print(f"Home position set to {home_center}")
 
             target = choose_target(candidate_targets, locked_target)
             if target is not None:
@@ -84,7 +94,19 @@ def main():
                 target = None
                 missed_target_frames = 0
 
-            raw_command, telemetry = compute_command(can_state, target)
+            returning_home = False
+            command_target = target
+            if (
+                command_target is None
+                and config.RETURN_HOME_WHEN_TARGET_LOST
+                and home_center is not None
+                and can_state is not None
+            ):
+                command_target = {"center": home_center}
+                returning_home = True
+
+            stop_distance_px = config.HOME_STOP_PX if returning_home else None
+            raw_command, telemetry = compute_command(can_state, command_target, stop_distance_px)
             if raw_command == last_command:
                 command = raw_command
                 pending_command = None
@@ -113,7 +135,8 @@ def main():
                 print(
                     f"[STATUS] can_found={can_state is not None} "
                     f"target_found={target is not None} candidates={len(candidate_targets)} "
-                    f"missed={missed_target_frames} command={command} raw={raw_command} "
+                    f"missed={missed_target_frames} returning_home={returning_home} "
+                    f"command={command} raw={raw_command} "
                     f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']} "
                     f"turn={telemetry['turn_strength']}"
                 )
@@ -121,7 +144,7 @@ def main():
 
             if window_enabled:
                 overlay = frame.copy()
-                draw_detection(overlay, can_state, target, command, telemetry)
+                draw_detection(overlay, can_state, target, command, telemetry, home_center, returning_home)
                 cv2.imshow(config.WINDOW_NAME, overlay)
 
                 key = cv2.waitKey(1) & 0xFF
@@ -131,6 +154,9 @@ def main():
                     locked_target = None
                     missed_target_frames = 0
                     print("Target lock reset.")
+                if key == ord("h") and can_state is not None:
+                    home_center = can_state["center"]
+                    print(f"Home position reset to {home_center}")
 
     except KeyboardInterrupt:
         print("Interrupted by user")

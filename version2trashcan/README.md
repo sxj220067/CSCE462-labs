@@ -97,6 +97,7 @@ CAMERA_COLOR_MODE = "rgb_to_bgr"
 
 - `q` or `Esc`: quit
 - `r`: reset the locked target
+- `h`: set the current robot position as home
 
 ## Movement test
 
@@ -227,6 +228,8 @@ You will likely need to tune these first in `config.py`:
 - `TURN_STRENGTH_SCALE`
 - `MIN_TURN_STRENGTH`
 - `MAX_TURN_STRENGTH`
+- `RETURN_HOME_WHEN_TARGET_LOST`
+- `HOME_STOP_PX`
 - `LOCK_MAX_JUMP_PX`
 
 Turn tuning:

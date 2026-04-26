@@ -43,7 +43,7 @@ def choose_target(candidates, locked_target):
     return best_candidate
 
 
-def compute_command(can_state, target):
+def compute_command(can_state, target, stop_distance_px=None):
     if can_state is None or target is None:
         return config.CMD_STOP, {"distance_px": None, "angle_deg": None, "turn_strength": 0}
 
@@ -55,8 +55,9 @@ def compute_command(can_state, target):
         target_center[1] - can_center[1],
     )
 
+    stop_distance = config.DISTANCE_STOP_PX if stop_distance_px is None else stop_distance_px
     dist_px = distance(can_center, target_center)
-    if dist_px <= config.DISTANCE_STOP_PX:
+    if dist_px <= stop_distance:
         return config.CMD_STOP, {"distance_px": dist_px, "angle_deg": 0.0, "turn_strength": 0}
 
     angle_deg = signed_angle_deg(heading, target_vector)

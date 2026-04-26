@@ -242,6 +242,7 @@ You will likely need to tune these first in `config.py`:
 - `OBSTACLE_AVOID_OFFSET_PX`
 - `OBSTACLE_DANGER_DISTANCE_PX`
 - `IGNORE_OBSTACLES_INSIDE_CAN_PX`
+- `IGNORE_OBSTACLES_CAN_LENGTH_SCALE`
 - `LOCK_MAX_JUMP_PX`
 
 Turn tuning:

@@ -72,11 +72,18 @@ def filter_obstacles_inside_can(can_state, obstacles):
     if can_state is None:
         return obstacles
     can_x, can_y = can_state["center"]
+    front_x, front_y = can_state["front"]["center"]
+    back_x, back_y = can_state["back"]["center"]
+    marker_distance = math.hypot(front_x - back_x, front_y - back_y)
+    ignore_radius = max(
+        config.IGNORE_OBSTACLES_INSIDE_CAN_PX,
+        marker_distance * config.IGNORE_OBSTACLES_CAN_LENGTH_SCALE,
+    )
     filtered = []
     for obstacle in obstacles:
         dx = obstacle["center"][0] - can_x
         dy = obstacle["center"][1] - can_y
-        if math.hypot(dx, dy) > config.IGNORE_OBSTACLES_INSIDE_CAN_PX:
+        if math.hypot(dx, dy) > ignore_radius:
             filtered.append(obstacle)
     return filtered
 

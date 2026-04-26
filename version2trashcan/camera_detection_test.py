@@ -3,6 +3,7 @@ import os
 import time
 
 import cv2
+import numpy as np
 
 import config
 from camera import create_capture, read_frame, release_capture
@@ -11,8 +12,33 @@ from detection import create_detector
 from main import draw_detection
 
 
+PINK_TEXT = (203, 192, 255)
+GREEN_TEXT = (0, 255, 0)
+YELLOW_TEXT = (0, 255, 255)
+WHITE_TEXT = (255, 255, 255)
+
+
 def _window_available():
     return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
+def _format_ranges(ranges):
+    return " or ".join(f"{lower}-{upper}" for lower, upper in ranges)
+
+
+def _mean_hsv_for_marker(hsv_frame, marker):
+    if marker is None:
+        return None
+    contour_mask = np.zeros(hsv_frame.shape[:2], dtype=np.uint8)
+    cv2.drawContours(contour_mask, [marker["contour"]], -1, 255, thickness=cv2.FILLED)
+    mean_hsv = cv2.mean(hsv_frame, mask=contour_mask)[:3]
+    return tuple(int(round(value)) for value in mean_hsv)
+
+
+def _format_hsv(mean_hsv):
+    if mean_hsv is None:
+        return "missing"
+    return f"H={mean_hsv[0]} S={mean_hsv[1]} V={mean_hsv[2]}"
 
 
 def _format_marker(marker):
@@ -21,7 +47,7 @@ def _format_marker(marker):
     return f"center={marker['center']} area={marker['area']:.0f}"
 
 
-def _print_status(can_state, target, candidates, telemetry):
+def _print_status(can_state, target, candidates, telemetry, hsv_values):
     front = can_state["front"] if can_state is not None else None
     back = can_state["back"] if can_state is not None else None
     target_text = _format_marker(target)
@@ -29,13 +55,31 @@ def _print_status(can_state, target, candidates, telemetry):
         "[CAMERA TEST] "
         f"robot_found={can_state is not None} "
         f"front={_format_marker(front)} "
+        f"front_hsv={_format_hsv(hsv_values['front'])} "
         f"back={_format_marker(back)} "
+        f"back_hsv={_format_hsv(hsv_values['back'])} "
         f"object_found={target is not None} "
         f"object={target_text} "
+        f"object_hsv={_format_hsv(hsv_values['target'])} "
         f"candidates={len(candidates)} "
         f"distance_px={telemetry['distance_px']} "
         f"angle_deg={telemetry['angle_deg']}"
     )
+
+
+def _draw_calibration_text(frame, hsv_values):
+    rows = [
+        ("pink front", hsv_values["front"], config.FRONT_MARKER_HSV_RANGES, PINK_TEXT),
+        ("green back", hsv_values["back"], config.BACK_MARKER_HSV_RANGES, GREEN_TEXT),
+        ("yellow target", hsv_values["target"], config.TARGET_HSV_RANGES, YELLOW_TEXT),
+    ]
+    y = 160
+    cv2.putText(frame, "Measured HSV / configured HSV range", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.48, WHITE_TEXT, 1)
+    y += 22
+    for label, mean_hsv, ranges, color in rows:
+        text = f"{label}: {_format_hsv(mean_hsv)} | range {_format_ranges(ranges)}"
+        cv2.putText(frame, text, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
+        y += 22
 
 
 def parse_args():
@@ -81,15 +125,22 @@ def main():
             candidates = result["target_candidates"]
             target = candidates[0] if candidates else None
             command, telemetry = compute_command(can_state, target)
+            hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            hsv_values = {
+                "front": _mean_hsv_for_marker(hsv_frame, can_state["front"] if can_state is not None else None),
+                "back": _mean_hsv_for_marker(hsv_frame, can_state["back"] if can_state is not None else None),
+                "target": _mean_hsv_for_marker(hsv_frame, target),
+            }
 
             now = time.time()
             if now - last_status_print >= config.STATUS_PRINT_INTERVAL:
-                _print_status(can_state, target, candidates, telemetry)
+                _print_status(can_state, target, candidates, telemetry, hsv_values)
                 last_status_print = now
 
             if window_enabled:
                 overlay = frame.copy()
                 draw_detection(overlay, can_state, target, command, telemetry)
+                _draw_calibration_text(overlay, hsv_values)
                 cv2.putText(
                     overlay,
                     "camera test only - no motor commands sent",

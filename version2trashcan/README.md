@@ -64,6 +64,7 @@ The preview window should show:
 - pink circle/text on the front marker
 - green circle/text on the back marker
 - yellow box around the target object
+- measured HSV values for each detected color, next to the configured HSV range
 
 For a terminal-only test:
 

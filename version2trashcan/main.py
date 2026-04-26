@@ -142,6 +142,16 @@ def main():
 
             stop_distance_px = config.HOME_STOP_PX if returning_home else None
             raw_command, telemetry = compute_command(can_state, command_target, stop_distance_px)
+            if returning_home and raw_command == config.CMD_STOP:
+                target_collected = False
+                return_home_mode = False
+                target_seen_once = False
+                target_inside_since = None
+                locked_target = None
+                missed_target_frames = 0
+                returning_home = False
+                command_target = None
+                print("Arrived home. Mission state reset.")
             if raw_command == last_command:
                 command = raw_command
                 pending_command = None

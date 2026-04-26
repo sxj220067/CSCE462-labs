@@ -10,8 +10,8 @@ const int LEFT_ENABLE = 33;
 const int RIGHT_ENABLE = 32;
 
 const int DRIVE_PWM = 255;
-const int TURN_OUTER_PWM = 220;
-const int TURN_INNER_PWM = 120;
+const int TURN_MIN_PWM = 150;
+const int TURN_MAX_PWM = 255;
 const int TURN_MIN_STRENGTH = 20;
 
 String commandBuffer = "";
@@ -58,33 +58,33 @@ void moveForward() {
   logPins(DRIVE_PWM, DRIVE_PWM);
 }
 
-int strengthToInnerPwm(int strength) {
+int strengthToTurnPwm(int strength) {
   strength = constrain(strength, TURN_MIN_STRENGTH, 100);
-  return map(strength, TURN_MIN_STRENGTH, 100, TURN_OUTER_PWM - 20, TURN_INNER_PWM);
+  return map(strength, TURN_MIN_STRENGTH, 100, TURN_MIN_PWM, TURN_MAX_PWM);
 }
 
 void curveLeft(int strength = 100) {
-  int innerPwm = strengthToInnerPwm(strength);
-  digitalWrite(LEFT_IN1, HIGH);
+  int turnPwm = strengthToTurnPwm(strength);
+  digitalWrite(LEFT_IN1, LOW);
   digitalWrite(LEFT_IN2, LOW);
   digitalWrite(RIGHT_IN1, HIGH);
   digitalWrite(RIGHT_IN2, LOW);
-  ledcWrite(LEFT_ENABLE, innerPwm);
-  ledcWrite(RIGHT_ENABLE, TURN_OUTER_PWM);
+  ledcWrite(LEFT_ENABLE, 0);
+  ledcWrite(RIGHT_ENABLE, turnPwm);
   logState("LEFT CURVE");
-  logPins(innerPwm, TURN_OUTER_PWM);
+  logPins(0, turnPwm);
 }
 
 void curveRight(int strength = 100) {
-  int innerPwm = strengthToInnerPwm(strength);
+  int turnPwm = strengthToTurnPwm(strength);
   digitalWrite(LEFT_IN1, HIGH);
   digitalWrite(LEFT_IN2, LOW);
-  digitalWrite(RIGHT_IN1, HIGH);
+  digitalWrite(RIGHT_IN1, LOW);
   digitalWrite(RIGHT_IN2, LOW);
-  ledcWrite(LEFT_ENABLE, TURN_OUTER_PWM);
-  ledcWrite(RIGHT_ENABLE, innerPwm);
+  ledcWrite(LEFT_ENABLE, turnPwm);
+  ledcWrite(RIGHT_ENABLE, 0);
   logState("RIGHT CURVE");
-  logPins(TURN_OUTER_PWM, innerPwm);
+  logPins(turnPwm, 0);
 }
 
 void runMotorSelfTest() {

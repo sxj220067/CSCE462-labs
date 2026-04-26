@@ -1,4 +1,5 @@
 import time
+import errno
 
 import config
 
@@ -60,7 +61,17 @@ class BluetoothTransport:
         self._socket_module = socket
         self._sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
         self._sock.settimeout(config.BLUETOOTH_CONNECT_TIMEOUT_S)
-        self._sock.connect((config.BLUETOOTH_MAC_ADDRESS, config.BLUETOOTH_CHANNEL))
+        try:
+            self._sock.connect((config.BLUETOOTH_MAC_ADDRESS, config.BLUETOOTH_CHANNEL))
+        except OSError as exc:
+            self._sock.close()
+            if exc.errno == errno.EBUSY:
+                raise RuntimeError(
+                    "ESP32 Bluetooth is busy. Close any running main.py/movement test, "
+                    "then run: bluetoothctl disconnect "
+                    f"{config.BLUETOOTH_MAC_ADDRESS}"
+                ) from exc
+            raise
         self._sock.settimeout(None)
         self._last_command = None
 

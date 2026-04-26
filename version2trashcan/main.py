@@ -68,6 +68,26 @@ def choose_avoidance_target(can_state, command_target, obstacles):
     return {"center": clamp_point(avoid_center), "obstacle": obstacle}
 
 
+def filter_obstacles_inside_can(can_state, obstacles):
+    if can_state is None:
+        return obstacles
+    can_x, can_y = can_state["center"]
+    filtered = []
+    for obstacle in obstacles:
+        dx = obstacle["center"][0] - can_x
+        dy = obstacle["center"][1] - can_y
+        if math.hypot(dx, dy) > config.IGNORE_OBSTACLES_INSIDE_CAN_PX:
+            filtered.append(obstacle)
+    return filtered
+
+
+def closest_obstacle_distance(can_state, obstacles):
+    if can_state is None or not obstacles:
+        return None
+    can_x, can_y = can_state["center"]
+    return min(math.hypot(obstacle["center"][0] - can_x, obstacle["center"][1] - can_y) for obstacle in obstacles)
+
+
 def draw_detection(frame, can_state, target, command, telemetry, home_center=None, returning_home=False, target_collected=False, view_safety=False, obstacles=None, avoidance_target=None):
     obstacles = [] if obstacles is None else obstacles
     if can_state is not None:
@@ -161,7 +181,7 @@ def main():
             result = detector.detect(frame)
             can_state = result["can_state"]
             candidate_targets = result["target_candidates"]
-            obstacles = result["obstacle_candidates"]
+            obstacles = filter_obstacles_inside_can(can_state, result["obstacle_candidates"])
             if home_center is None and can_state is not None:
                 home_center = can_state["center"]
                 print(f"Home position set to {home_center}")
@@ -240,8 +260,16 @@ def main():
                     command_target = {"center": avoidance_target["center"]}
                     returning_home = False
 
+            obstacle_distance = closest_obstacle_distance(can_state, obstacles)
+            obstacle_emergency_stop = (
+                obstacle_distance is not None
+                and obstacle_distance <= config.OBSTACLE_DANGER_DISTANCE_PX
+            )
             stop_distance_px = config.VIEW_SAFE_STOP_PX if view_safety else config.HOME_STOP_PX if returning_home else None
             raw_command, telemetry = compute_command(can_state, command_target, stop_distance_px)
+            if obstacle_emergency_stop:
+                raw_command = config.CMD_STOP
+                telemetry = {"distance_px": obstacle_distance, "angle_deg": 0.0, "turn_strength": 0}
             if returning_home and raw_command == config.CMD_STOP:
                 target_collected = False
                 return_home_mode = False
@@ -279,7 +307,7 @@ def main():
                 print(
                     f"[STATUS] can_found={can_state is not None} "
                     f"target_found={target is not None} candidates={len(candidate_targets)} "
-                    f"missed={missed_target_frames} collected={target_collected} return_mode={return_home_mode} returning_home={returning_home} view_safety={view_safety} obstacles={len(obstacles)} avoiding={avoidance_target is not None} "
+                    f"missed={missed_target_frames} collected={target_collected} return_mode={return_home_mode} returning_home={returning_home} view_safety={view_safety} obstacles={len(obstacles)} avoiding={avoidance_target is not None} obstacle_stop={obstacle_emergency_stop} "
                     f"command={command} raw={raw_command} "
                     f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']} "
                     f"turn={telemetry['turn_strength']}"

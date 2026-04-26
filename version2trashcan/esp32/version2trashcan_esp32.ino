@@ -13,6 +13,7 @@ const int DRIVE_PWM = 255;
 const int TURN_MIN_PWM = 150;
 const int TURN_MAX_PWM = 255;
 const int TURN_MIN_STRENGTH = 20;
+const bool SWAP_TURN_DIRECTIONS = true;
 
 String commandBuffer = "";
 
@@ -108,9 +109,17 @@ void applyCommand(char command, int strength = 100) {
   if (command == 'F') {
     moveForward();
   } else if (command == 'L') {
-    curveLeft(strength);
+    if (SWAP_TURN_DIRECTIONS) {
+      curveRight(strength);
+    } else {
+      curveLeft(strength);
+    }
   } else if (command == 'R') {
-    curveRight(strength);
+    if (SWAP_TURN_DIRECTIONS) {
+      curveLeft(strength);
+    } else {
+      curveRight(strength);
+    }
   } else if (command == 'T') {
     runMotorSelfTest();
   } else {

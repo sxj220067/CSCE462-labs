@@ -72,6 +72,18 @@ For a terminal-only test:
 python3 camera_detection_test.py --no-window
 ```
 
+If orange looks blue in the preview, test the red/blue channel fix:
+
+```bash
+python3 camera_detection_test.py --camera-color-mode rgb_to_bgr
+```
+
+If that makes the colors look correct, set this in `config.py`:
+
+```python
+CAMERA_COLOR_MODE = "rgb_to_bgr"
+```
+
 ## Controls
 
 - `q` or `Esc`: quit

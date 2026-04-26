@@ -67,6 +67,10 @@ def read_frame(cap):
     ok, frame = cap.read()
     if not ok or frame is None:
         return None
+    if config.CAMERA_COLOR_MODE == "rgb_to_bgr":
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    elif config.CAMERA_COLOR_MODE != "bgr":
+        raise RuntimeError(f"Unsupported CAMERA_COLOR_MODE: {config.CAMERA_COLOR_MODE}")
     if frame.shape[1] != config.FRAME_WIDTH or frame.shape[0] != config.FRAME_HEIGHT:
         frame = cv2.resize(frame, (config.FRAME_WIDTH, config.FRAME_HEIGHT))
     return frame

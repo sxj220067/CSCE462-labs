@@ -97,11 +97,19 @@ def parse_args():
         default=0.0,
         help="Stop after this many seconds. Default 0 runs until q/Esc/Ctrl-C.",
     )
+    parser.add_argument(
+        "--camera-color-mode",
+        choices=("bgr", "rgb_to_bgr"),
+        default=None,
+        help="Override config.CAMERA_COLOR_MODE for testing swapped red/blue camera channels.",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    if args.camera_color_mode is not None:
+        config.CAMERA_COLOR_MODE = args.camera_color_mode
     detector = create_detector()
     cap = create_capture()
     window_enabled = config.SHOW_WINDOW and not args.no_window and _window_available()
@@ -113,6 +121,7 @@ def main():
         "Looking for pink front marker, orange back marker, and yellow target object."
     )
     print(f"Preview window: {'on' if window_enabled else 'off'}")
+    print(f"Camera color mode: {config.CAMERA_COLOR_MODE}")
 
     try:
         while True:

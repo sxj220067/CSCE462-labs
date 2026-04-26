@@ -126,6 +126,24 @@ python3 movement_test.py T
 
 The ESP32 Serial Monitor should print `SELF TEST START`, `FORWARD`, `LEFT`, `RIGHT`, and `STOP`.
 
+## Turn calibration test
+
+Test the same angle-based turn strength that `main.py` sends:
+
+```bash
+python3 turn_calibration_test.py L --angle 30 --duration 1.0
+python3 turn_calibration_test.py L --angle 60 --duration 1.0
+python3 turn_calibration_test.py L --angle 90 --duration 1.0
+```
+
+To bypass the angle math and test raw turn strength:
+
+```bash
+python3 turn_calibration_test.py R --strength 25 --duration 1.0
+python3 turn_calibration_test.py R --strength 50 --duration 1.0
+python3 turn_calibration_test.py R --strength 75 --duration 1.0
+```
+
 ## Default mode
 
 The project is configured for ESP32 Bluetooth by default. The Raspberry Pi runs the camera code and sends `F`, `L`, `R`, or `S` over Bluetooth. The ESP32/Arduino sketch receives those commands and drives the L298N motor driver.

@@ -68,19 +68,6 @@ def choose_avoidance_target(can_state, command_target, obstacles):
     return {"center": clamp_point(avoid_center), "obstacle": obstacle}
 
 
-def filter_obstacles_inside_can(can_state, obstacles):
-    if can_state is None:
-        return obstacles
-    can_x, can_y = can_state["center"]
-    filtered = []
-    for obstacle in obstacles:
-        dx = obstacle["center"][0] - can_x
-        dy = obstacle["center"][1] - can_y
-        if math.hypot(dx, dy) > config.IGNORE_OBSTACLES_INSIDE_CAN_PX:
-            filtered.append(obstacle)
-    return filtered
-
-
 def draw_detection(frame, can_state, target, command, telemetry, home_center=None, returning_home=False, target_collected=False, view_safety=False, obstacles=None, avoidance_target=None):
     obstacles = [] if obstacles is None else obstacles
     if can_state is not None:
@@ -174,7 +161,7 @@ def main():
             result = detector.detect(frame)
             can_state = result["can_state"]
             candidate_targets = result["target_candidates"]
-            obstacles = filter_obstacles_inside_can(can_state, result["obstacle_candidates"])
+            obstacles = result["obstacle_candidates"]
             if home_center is None and can_state is not None:
                 home_center = can_state["center"]
                 print(f"Home position set to {home_center}")

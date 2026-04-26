@@ -67,6 +67,8 @@ def main():
     home_center = None
     target_inside_since = None
     target_collected = False
+    return_home_mode = False
+    target_seen_once = False
 
     print(
         f"Version2TrashCan starting: backend={config.CAMERA_BACKEND}, "
@@ -86,17 +88,25 @@ def main():
                 home_center = can_state["center"]
                 print(f"Home position set to {home_center}")
 
-            target = choose_target(candidate_targets, locked_target)
-            if target is not None:
-                locked_target = target
-                missed_target_frames = 0
-            elif locked_target is not None and missed_target_frames < config.LOCK_MAX_MISSED_FRAMES:
-                target = locked_target
-                missed_target_frames += 1
-            else:
-                locked_target = None
+            if return_home_mode:
                 target = None
-                missed_target_frames = 0
+                locked_target = None
+            else:
+                target = choose_target(candidate_targets, locked_target)
+                if target is not None:
+                    target_seen_once = True
+                    locked_target = target
+                    missed_target_frames = 0
+                elif locked_target is not None and missed_target_frames < config.LOCK_MAX_MISSED_FRAMES:
+                    target = locked_target
+                    missed_target_frames += 1
+                else:
+                    locked_target = None
+                    target = None
+                    if config.RETURN_HOME_WHEN_TARGET_LOST and target_seen_once:
+                        return_home_mode = True
+                        print("Target lost. Returning home.")
+                    missed_target_frames = 0
 
             now = time.time()
             target_inside = False
@@ -111,6 +121,7 @@ def main():
                         target_inside_since = now
                     elif now - target_inside_since >= config.TARGET_COLLECTED_SECONDS:
                         target_collected = True
+                        return_home_mode = config.RETURN_HOME_WHEN_TARGET_COLLECTED
                         locked_target = None
                         print("Target collected. Returning home.")
                 else:
@@ -118,11 +129,11 @@ def main():
 
             returning_home = False
             command_target = target
-            if target_collected and config.RETURN_HOME_WHEN_TARGET_COLLECTED:
+            if return_home_mode:
                 command_target = None
             if (
                 command_target is None
-                and (config.RETURN_HOME_WHEN_TARGET_LOST or target_collected)
+                and return_home_mode
                 and home_center is not None
                 and can_state is not None
             ):
@@ -158,7 +169,7 @@ def main():
                 print(
                     f"[STATUS] can_found={can_state is not None} "
                     f"target_found={target is not None} candidates={len(candidate_targets)} "
-                    f"missed={missed_target_frames} collected={target_collected} returning_home={returning_home} "
+                    f"missed={missed_target_frames} collected={target_collected} return_mode={return_home_mode} returning_home={returning_home} "
                     f"command={command} raw={raw_command} "
                     f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']} "
                     f"turn={telemetry['turn_strength']}"
@@ -178,6 +189,8 @@ def main():
                     missed_target_frames = 0
                     target_inside_since = None
                     target_collected = False
+                    return_home_mode = False
+                    target_seen_once = False
                     print("Target lock reset.")
                 if key == ord("h") and can_state is not None:
                     home_center = can_state["center"]

@@ -52,6 +52,8 @@ def main():
     last_status_print = 0.0
     last_command_sent_at = 0.0
     last_command = config.CMD_STOP
+    pending_command = None
+    pending_command_count = 0
     locked_target = None
     missed_target_frames = 0
 
@@ -82,7 +84,25 @@ def main():
                 target = None
                 missed_target_frames = 0
 
-            command, telemetry = compute_command(can_state, target)
+            raw_command, telemetry = compute_command(can_state, target)
+            if raw_command == last_command:
+                command = raw_command
+                pending_command = None
+                pending_command_count = 0
+            else:
+                if raw_command == pending_command:
+                    pending_command_count += 1
+                else:
+                    pending_command = raw_command
+                    pending_command_count = 1
+
+                if raw_command in {config.CMD_FORWARD, config.CMD_STOP}:
+                    command = raw_command
+                elif pending_command_count >= config.COMMAND_CHANGE_CONFIRMATIONS:
+                    command = raw_command
+                else:
+                    command = last_command
+
             now = time.time()
             if command != last_command or (now - last_command_sent_at) >= config.COMMAND_UPDATE_INTERVAL_S:
                 transport.send(command)
@@ -93,7 +113,7 @@ def main():
                 print(
                     f"[STATUS] can_found={can_state is not None} "
                     f"target_found={target is not None} candidates={len(candidate_targets)} "
-                    f"missed={missed_target_frames} command={command} "
+                    f"missed={missed_target_frames} command={command} raw={raw_command} "
                     f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']}"
                 )
                 last_status_print = now

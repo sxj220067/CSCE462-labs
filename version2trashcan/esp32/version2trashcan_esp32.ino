@@ -95,9 +95,9 @@ void applyCommand(char command) {
   if (command == 'F') {
     moveForward();
   } else if (command == 'L') {
-    turnLeft();
-  } else if (command == 'R') {
     turnRight();
+  } else if (command == 'R') {
+    turnLeft();
   } else if (command == 'T') {
     runMotorSelfTest();
   } else {

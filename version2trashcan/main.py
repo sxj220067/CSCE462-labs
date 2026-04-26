@@ -1,4 +1,5 @@
 import os
+import math
 import time
 
 import cv2
@@ -10,7 +11,65 @@ from detection import create_detector
 from transport import create_transport
 
 
-def draw_detection(frame, can_state, target, command, telemetry, home_center=None, returning_home=False, target_collected=False):
+def clamp_point(point):
+    return (
+        max(0, min(config.FRAME_WIDTH - 1, int(point[0]))),
+        max(0, min(config.FRAME_HEIGHT - 1, int(point[1]))),
+    )
+
+
+def obstacle_blocks_path(start, goal, obstacle):
+    sx, sy = start
+    gx, gy = goal
+    ox, oy = obstacle["center"]
+    dx = gx - sx
+    dy = gy - sy
+    length_sq = (dx * dx) + (dy * dy)
+    if length_sq <= 1:
+        return False
+
+    projection = (((ox - sx) * dx) + ((oy - sy) * dy)) / length_sq
+    if projection <= 0.0 or projection >= 1.0:
+        return False
+
+    closest_x = sx + (projection * dx)
+    closest_y = sy + (projection * dy)
+    distance_to_path = math.hypot(ox - closest_x, oy - closest_y)
+    return distance_to_path <= obstacle["radius"] + config.OBSTACLE_PATH_CLEARANCE_PX
+
+
+def choose_avoidance_target(can_state, command_target, obstacles):
+    if not config.AVOID_WHITE_OBSTACLES or can_state is None or command_target is None:
+        return None
+
+    start = can_state["center"]
+    goal = command_target["center"]
+    blocking = [obstacle for obstacle in obstacles if obstacle_blocks_path(start, goal, obstacle)]
+    if not blocking:
+        return None
+
+    obstacle = min(blocking, key=lambda item: math.hypot(item["center"][0] - start[0], item["center"][1] - start[1]))
+    sx, sy = start
+    gx, gy = goal
+    dx = gx - sx
+    dy = gy - sy
+    path_length = max(1.0, math.hypot(dx, dy))
+    perp_x = -dy / path_length
+    perp_y = dx / path_length
+
+    center_x = config.FRAME_WIDTH / 2
+    center_y = config.FRAME_HEIGHT / 2
+    ox, oy = obstacle["center"]
+    option_a = (ox + (perp_x * config.OBSTACLE_AVOID_OFFSET_PX), oy + (perp_y * config.OBSTACLE_AVOID_OFFSET_PX))
+    option_b = (ox - (perp_x * config.OBSTACLE_AVOID_OFFSET_PX), oy - (perp_y * config.OBSTACLE_AVOID_OFFSET_PX))
+    dist_a = math.hypot(option_a[0] - center_x, option_a[1] - center_y)
+    dist_b = math.hypot(option_b[0] - center_x, option_b[1] - center_y)
+    avoid_center = option_a if dist_a < dist_b else option_b
+    return {"center": clamp_point(avoid_center), "obstacle": obstacle}
+
+
+def draw_detection(frame, can_state, target, command, telemetry, home_center=None, returning_home=False, target_collected=False, view_safety=False, obstacles=None, avoidance_target=None):
+    obstacles = [] if obstacles is None else obstacles
     if can_state is not None:
         front = can_state["front"]["center"]
         back = can_state["back"]["center"]
@@ -33,14 +92,32 @@ def draw_detection(frame, can_state, target, command, telemetry, home_center=Non
     else:
         cv2.putText(frame, "Target not found", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
 
+    for obstacle in obstacles:
+        x, y, w, h = obstacle["bbox"]
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (245, 245, 245), 2)
+        cv2.circle(frame, obstacle["center"], 4, (245, 245, 245), -1)
+
+    if avoidance_target is not None:
+        avoid_center = avoidance_target["center"]
+        cv2.drawMarker(frame, avoid_center, (0, 165, 255), markerType=cv2.MARKER_CROSS, markerSize=18, thickness=2)
+        cv2.putText(frame, "avoid", (avoid_center[0] + 8, avoid_center[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+
     if home_center is not None:
         cv2.drawMarker(frame, home_center, (255, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=18, thickness=2)
         cv2.putText(frame, "home", (home_center[0] + 8, home_center[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+
+    if config.KEEP_TRASH_CAN_IN_VIEW:
+        margin = config.VIEW_EDGE_MARGIN_PX
+        cv2.rectangle(frame, (margin, margin), (config.FRAME_WIDTH - margin, config.FRAME_HEIGHT - margin), (180, 180, 180), 1)
+        if view_safety:
+            cv2.putText(frame, "view safety", (10, 185), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 165, 255), 2)
 
     if can_state is not None and target is not None:
         cv2.line(frame, can_state["center"], target["center"], (0, 255, 255), 2)
     elif can_state is not None and returning_home and home_center is not None:
         cv2.line(frame, can_state["center"], home_center, (255, 255, 0), 2)
+    if can_state is not None and avoidance_target is not None:
+        cv2.line(frame, can_state["center"], avoidance_target["center"], (0, 165, 255), 2)
 
     dist_px = telemetry["distance_px"]
     angle_deg = telemetry["angle_deg"]
@@ -84,6 +161,7 @@ def main():
             result = detector.detect(frame)
             can_state = result["can_state"]
             candidate_targets = result["target_candidates"]
+            obstacles = result["obstacle_candidates"]
             if home_center is None and can_state is not None:
                 home_center = can_state["center"]
                 print(f"Home position set to {home_center}")
@@ -128,6 +206,7 @@ def main():
                     target_inside_since = None
 
             returning_home = False
+            view_safety = False
             command_target = target
             if return_home_mode:
                 command_target = None
@@ -140,7 +219,28 @@ def main():
                 command_target = {"center": home_center}
                 returning_home = True
 
-            stop_distance_px = config.HOME_STOP_PX if returning_home else None
+            if config.KEEP_TRASH_CAN_IN_VIEW and can_state is not None:
+                can_x, can_y = can_state["center"]
+                margin = config.VIEW_EDGE_MARGIN_PX
+                near_edge = (
+                    can_x <= margin
+                    or can_x >= config.FRAME_WIDTH - margin
+                    or can_y <= margin
+                    or can_y >= config.FRAME_HEIGHT - margin
+                )
+                if near_edge:
+                    command_target = {"center": (int(config.FRAME_WIDTH / 2), int(config.FRAME_HEIGHT / 2))}
+                    returning_home = False
+                    view_safety = True
+
+            avoidance_target = None
+            if not view_safety:
+                avoidance_target = choose_avoidance_target(can_state, command_target, obstacles)
+                if avoidance_target is not None:
+                    command_target = {"center": avoidance_target["center"]}
+                    returning_home = False
+
+            stop_distance_px = config.VIEW_SAFE_STOP_PX if view_safety else config.HOME_STOP_PX if returning_home else None
             raw_command, telemetry = compute_command(can_state, command_target, stop_distance_px)
             if returning_home and raw_command == config.CMD_STOP:
                 target_collected = False
@@ -179,7 +279,7 @@ def main():
                 print(
                     f"[STATUS] can_found={can_state is not None} "
                     f"target_found={target is not None} candidates={len(candidate_targets)} "
-                    f"missed={missed_target_frames} collected={target_collected} return_mode={return_home_mode} returning_home={returning_home} "
+                    f"missed={missed_target_frames} collected={target_collected} return_mode={return_home_mode} returning_home={returning_home} view_safety={view_safety} obstacles={len(obstacles)} avoiding={avoidance_target is not None} "
                     f"command={command} raw={raw_command} "
                     f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']} "
                     f"turn={telemetry['turn_strength']}"
@@ -188,7 +288,7 @@ def main():
 
             if window_enabled:
                 overlay = frame.copy()
-                draw_detection(overlay, can_state, target, command, telemetry, home_center, returning_home, target_collected)
+                draw_detection(overlay, can_state, target, command, telemetry, home_center, returning_home, target_collected, view_safety, obstacles, avoidance_target)
                 cv2.imshow(config.WINDOW_NAME, overlay)
 
                 key = cv2.waitKey(1) & 0xFF

@@ -21,6 +21,8 @@ MIN_MARKER_AREA = 120
 MAX_MARKER_AREA = 20000
 MIN_TARGET_AREA = 180
 MAX_TARGET_AREA = 35000
+MIN_OBSTACLE_AREA = 300
+MAX_OBSTACLE_AREA = 60000
 
 # HSV ranges are in OpenCV format: H in [0,179], S/V in [0,255].
 # Adjust these for your real lighting and tape/object colors.
@@ -36,6 +38,10 @@ TARGET_HSV_RANGES = (
     # Tennis ball target. Tuned around measured HSV H=88 S=80 V=240.
     ((80, 45, 190), (98, 140, 255)),
 )
+OBSTACLE_HSV_RANGES = (
+    # White obstacle: bright, low saturation.
+    ((0, 0, 180), (179, 55, 255)),
+)
 
 # Target lock behavior
 LOCK_ON_FIRST_TARGET = True
@@ -46,6 +52,12 @@ TARGET_COLLECTED_SECONDS = 2.0
 RETURN_HOME_WHEN_TARGET_COLLECTED = True
 RETURN_HOME_WHEN_TARGET_LOST = True
 HOME_STOP_PX = 45.0
+KEEP_TRASH_CAN_IN_VIEW = True
+VIEW_EDGE_MARGIN_PX = 60
+VIEW_SAFE_STOP_PX = 50.0
+AVOID_WHITE_OBSTACLES = True
+OBSTACLE_PATH_CLEARANCE_PX = 45.0
+OBSTACLE_AVOID_OFFSET_PX = 95.0
 
 # Motion/controller behavior
 HEADING_ALIGNMENT_DEG = 22.0

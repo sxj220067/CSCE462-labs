@@ -24,15 +24,15 @@ MAX_TARGET_AREA = 35000
 # HSV ranges are in OpenCV format: H in [0,179], S/V in [0,255].
 # Adjust these for your real lighting and tape/object colors.
 FRONT_MARKER_HSV_RANGES = (
-    # Pink/magenta front marker.
-    ((140, 70, 80), (179, 255, 255)),
+    # Pink/magenta front marker. Tuned around measured HSV H=134 S=170 V=217.
+    ((125, 80, 120), (150, 255, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
-    # Green back marker.
-    ((40, 70, 50), (90, 255, 255)),
+    # Orange back marker. Measure with camera_detection_test.py and tighten if needed.
+    ((5, 80, 80), (22, 255, 255)),
 )
 TARGET_HSV_RANGES = (
-    # Yellow target object. Keep this distinct from the green back marker.
+    # Yellow target object. Keep this distinct from the orange back marker.
     ((22, 70, 70), (42, 255, 255)),
 )
 

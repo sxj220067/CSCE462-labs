@@ -29,11 +29,11 @@ FRONT_MARKER_HSV_RANGES = (
     ((125, 80, 120), (150, 255, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
-    # Orange back marker. Measure with camera_detection_test.py and tighten if needed.
-    ((5, 80, 80), (22, 255, 255)),
+    # Light blue back marker. Measure with camera_detection_test.py and tighten if needed.
+    ((85, 40, 100), (115, 255, 255)),
 )
 TARGET_HSV_RANGES = (
-    # Yellow target object. Keep this distinct from the orange back marker.
+    # Yellow target object. Keep this distinct from the light blue back marker.
     ((22, 70, 70), (42, 255, 255)),
 )
 

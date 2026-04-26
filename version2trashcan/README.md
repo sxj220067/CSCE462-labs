@@ -15,7 +15,7 @@ The fixed camera watches:
 
 The trash can should have two visible markers:
 - front marker: pink
-- back marker: orange
+- back marker: light blue
 
 The target object should use one detectable color:
 - target: yellow by default
@@ -23,7 +23,7 @@ The target object should use one detectable color:
 ## How it works
 
 1. Detect the pink front marker.
-2. Detect the orange back marker.
+2. Detect the light blue back marker.
 3. Compute the trash can center and heading.
 4. Detect the target object.
 5. Lock onto the first target.
@@ -62,7 +62,7 @@ python3 camera_detection_test.py
 The preview window should show:
 
 - pink circle/text on the front marker
-- orange circle/text on the back marker
+- light blue circle/text on the back marker
 - yellow box around the target object
 - measured HSV values for each detected color, next to the configured HSV range
 
@@ -72,7 +72,7 @@ For a terminal-only test:
 python3 camera_detection_test.py --no-window
 ```
 
-If orange looks blue in the preview, test the red/blue channel fix:
+If colors look swapped in the preview, test the red/blue channel fix:
 
 ```bash
 python3 camera_detection_test.py --camera-color-mode rgb_to_bgr

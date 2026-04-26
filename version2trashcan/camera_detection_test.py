@@ -13,7 +13,7 @@ from main import draw_detection
 
 
 PINK_TEXT = (203, 192, 255)
-ORANGE_TEXT = (0, 140, 255)
+LIGHT_BLUE_TEXT = (255, 220, 120)
 YELLOW_TEXT = (0, 255, 255)
 WHITE_TEXT = (255, 255, 255)
 
@@ -70,7 +70,7 @@ def _print_status(can_state, target, candidates, telemetry, hsv_values):
 def _draw_calibration_text(frame, hsv_values):
     rows = [
         ("pink front", hsv_values["front"], config.FRONT_MARKER_HSV_RANGES, PINK_TEXT),
-        ("orange back", hsv_values["back"], config.BACK_MARKER_HSV_RANGES, ORANGE_TEXT),
+        ("light blue back", hsv_values["back"], config.BACK_MARKER_HSV_RANGES, LIGHT_BLUE_TEXT),
         ("yellow target", hsv_values["target"], config.TARGET_HSV_RANGES, YELLOW_TEXT),
     ]
     y = 160
@@ -118,7 +118,7 @@ def main():
 
     print(
         "Camera detection test starting. "
-        "Looking for pink front marker, orange back marker, and yellow target object."
+        "Looking for pink front marker, light blue back marker, and yellow target object."
     )
     print(f"Preview window: {'on' if window_enabled else 'off'}")
     print(f"Camera color mode: {config.CAMERA_COLOR_MODE}")

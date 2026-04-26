@@ -33,6 +33,7 @@ The target object should use one detectable color:
 
 - `main.py`: main wall-camera loop
 - `camera_detection_test.py`: camera-only test for robot markers and target object
+- `movement_test.py`: safe movement-only test for `F`, `L`, `R`, and `S`
 - `camera.py`: OpenCV/Picamera2 capture
 - `detection.py`: marker and target color detection
 - `controller.py`: heading math and command selection
@@ -96,6 +97,26 @@ CAMERA_COLOR_MODE = "rgb_to_bgr"
 
 - `q` or `Esc`: quit
 - `r`: reset the locked target
+
+## Movement test
+
+Test movement without using the camera:
+
+```bash
+cd /Users/harp12/CSCE462-labs/version2trashcan
+python3 movement_test.py
+```
+
+That runs `F`, `L`, and `R` briefly, sending `S` after each command.
+
+To test one command:
+
+```bash
+python3 movement_test.py F --duration 1.0
+python3 movement_test.py L --duration 1.0
+python3 movement_test.py R --duration 1.0
+python3 movement_test.py S
+```
 
 ## Default mode
 

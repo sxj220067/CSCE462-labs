@@ -29,12 +29,12 @@ FRONT_MARKER_HSV_RANGES = (
     ((132, 150, 180), (152, 255, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
-    # Light blue back marker. Tuned around measured HSV H=96 S=146 V=255.
-    ((86, 80, 180), (106, 220, 255)),
+    # Green back marker. Tuned around measured HSV H=61 S=80 V=252.
+    ((52, 45, 190), (70, 140, 255)),
 )
 TARGET_HSV_RANGES = (
-    # Tennis ball target. Camera reads it as very bright and low-saturation.
-    ((80, 0, 210), (100, 45, 255)),
+    # Tennis ball target. Tuned around measured HSV H=88 S=80 V=240.
+    ((80, 45, 190), (98, 140, 255)),
 )
 
 # Target lock behavior

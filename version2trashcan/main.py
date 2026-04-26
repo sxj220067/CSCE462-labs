@@ -16,11 +16,11 @@ def draw_detection(frame, can_state, target, command, telemetry):
         back = can_state["back"]["center"]
         center = can_state["center"]
         cv2.circle(frame, front, 8, (203, 192, 255), -1)
-        cv2.circle(frame, back, 8, (255, 220, 120), -1)
+        cv2.circle(frame, back, 8, (0, 255, 0), -1)
         cv2.circle(frame, center, 6, (255, 255, 255), -1)
         cv2.line(frame, back, front, (255, 255, 255), 2)
         cv2.putText(frame, "front", (front[0] + 8, front[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (203, 192, 255), 2)
-        cv2.putText(frame, "back", (back[0] + 8, back[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 220, 120), 2)
+        cv2.putText(frame, "back", (back[0] + 8, back[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     else:
         cv2.putText(frame, "Trash can markers not found", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 

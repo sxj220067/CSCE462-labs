@@ -32,6 +32,7 @@ The target object should use one detectable color:
 ## Files
 
 - `main.py`: main wall-camera loop
+- `camera_detection_test.py`: camera-only test for robot markers and target object
 - `camera.py`: OpenCV/Picamera2 capture
 - `detection.py`: marker and target color detection
 - `controller.py`: heading math and command selection
@@ -47,6 +48,27 @@ python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements.txt
 python3 main.py
+```
+
+## Camera detection test
+
+Before running the motors, test that the ceiling/wall camera can see the robot and target:
+
+```bash
+cd /Users/harp12/CSCE462-labs/version2trashcan
+python3 camera_detection_test.py
+```
+
+The preview window should show:
+
+- pink circle/text on the front marker
+- green circle/text on the back marker
+- yellow box around the target object
+
+For a terminal-only test:
+
+```bash
+python3 camera_detection_test.py --no-window
 ```
 
 ## Controls

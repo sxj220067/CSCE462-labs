@@ -5,7 +5,7 @@
 Recommended architecture:
 
 - Raspberry Pi + fixed ceiling/wall camera
-- ESP32 on the trash can
+- ESP32/Arduino motor controller on the trash can
 - Bluetooth commands from Pi to ESP32
 - L298N motor driver connected to the ESP32
 
@@ -107,7 +107,7 @@ cd /Users/harp12/CSCE462-labs/version2trashcan
 python3 movement_test.py
 ```
 
-That runs `F`, `L`, and `R` briefly, sending `S` after each command.
+That runs `F`, `L`, and `R` for 2 seconds each, sending `S` after each command.
 
 To test one command:
 
@@ -118,9 +118,17 @@ python3 movement_test.py R --duration 1.0
 python3 movement_test.py S
 ```
 
+To run the ESP32's built-in motor self-test:
+
+```bash
+python3 movement_test.py T
+```
+
+The ESP32 Serial Monitor should print `SELF TEST START`, `FORWARD`, `LEFT`, `RIGHT`, and `STOP`.
+
 ## Default mode
 
-The project is configured for ESP32 Bluetooth by default.
+The project is configured for ESP32 Bluetooth by default. The Raspberry Pi runs the camera code and sends `F`, `L`, `R`, or `S` over Bluetooth. The ESP32/Arduino sketch receives those commands and drives the L298N motor driver.
 
 Set these values in `config.py` before running:
 

@@ -206,7 +206,15 @@ You will likely need to tune these first in `config.py`:
 - `TARGET_HSV_RANGES`
 - `DISTANCE_STOP_PX`
 - `HEADING_ALIGNMENT_DEG`
+- `TURN_STRENGTH_SCALE`
+- `MIN_TURN_STRENGTH`
+- `MAX_TURN_STRENGTH`
 - `LOCK_MAX_JUMP_PX`
+
+Turn tuning:
+
+- If turns overshoot, lower `TURN_STRENGTH_SCALE` or `MAX_TURN_STRENGTH`.
+- If turns are too weak, raise `TURN_STRENGTH_SCALE` or `MIN_TURN_STRENGTH`.
 
 ## Notes
 

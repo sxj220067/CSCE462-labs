@@ -20,6 +20,10 @@ def signed_angle_deg(heading, target_vector):
     return angle
 
 
+def clamp(value, lower, upper):
+    return max(lower, min(upper, value))
+
+
 def choose_target(candidates, locked_target):
     if not candidates:
         return None
@@ -41,7 +45,7 @@ def choose_target(candidates, locked_target):
 
 def compute_command(can_state, target):
     if can_state is None or target is None:
-        return config.CMD_STOP, {"distance_px": None, "angle_deg": None}
+        return config.CMD_STOP, {"distance_px": None, "angle_deg": None, "turn_strength": 0}
 
     can_center = can_state["center"]
     heading = can_state["heading"]
@@ -53,14 +57,18 @@ def compute_command(can_state, target):
 
     dist_px = distance(can_center, target_center)
     if dist_px <= config.DISTANCE_STOP_PX:
-        return config.CMD_STOP, {"distance_px": dist_px, "angle_deg": 0.0}
+        return config.CMD_STOP, {"distance_px": dist_px, "angle_deg": 0.0, "turn_strength": 0}
 
     angle_deg = signed_angle_deg(heading, target_vector)
     if abs(angle_deg) <= config.HEADING_ALIGNMENT_DEG:
-        return config.CMD_FORWARD, {"distance_px": dist_px, "angle_deg": angle_deg}
+        return config.CMD_FORWARD, {"distance_px": dist_px, "angle_deg": angle_deg, "turn_strength": 0}
+
+    turn_ratio = min(1.0, abs(angle_deg) / config.FULL_TURN_ANGLE_DEG)
+    turn_strength = int(round(turn_ratio * 100 * config.TURN_STRENGTH_SCALE))
+    turn_strength = clamp(turn_strength, config.MIN_TURN_STRENGTH, config.MAX_TURN_STRENGTH)
 
     if config.FORWARD_ONLY_WHEN_ALIGNED:
         command = config.CMD_LEFT if angle_deg < 0.0 else config.CMD_RIGHT
-        return command, {"distance_px": dist_px, "angle_deg": angle_deg}
+        return command, {"distance_px": dist_px, "angle_deg": angle_deg, "turn_strength": turn_strength}
 
-    return config.CMD_FORWARD, {"distance_px": dist_px, "angle_deg": angle_deg}
+    return config.CMD_FORWARD, {"distance_px": dist_px, "angle_deg": angle_deg, "turn_strength": turn_strength}

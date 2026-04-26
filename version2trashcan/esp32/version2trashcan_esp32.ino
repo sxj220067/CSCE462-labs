@@ -10,14 +10,18 @@ const int LEFT_ENABLE = 33;
 const int RIGHT_ENABLE = 32;
 
 const int DRIVE_PWM = 255;
-const int TURN_PWM = 255;
+const int TURN_OUTER_PWM = 220;
+const int TURN_INNER_PWM = 120;
+const int TURN_MIN_STRENGTH = 20;
+
+String commandBuffer = "";
 
 void logState(const char *message) {
   Serial.print("[ESP32] ");
   Serial.println(message);
 }
 
-void logPins() {
+void logPins(int leftPwm, int rightPwm) {
   Serial.print("[ESP32] pins L_IN1=");
   Serial.print(digitalRead(LEFT_IN1));
   Serial.print(" L_IN2=");
@@ -27,9 +31,9 @@ void logPins() {
   Serial.print(" R_IN2=");
   Serial.print(digitalRead(RIGHT_IN2));
   Serial.print(" L_PWM=");
-  Serial.print(DRIVE_PWM);
+  Serial.print(leftPwm);
   Serial.print(" R_PWM=");
-  Serial.println(DRIVE_PWM);
+  Serial.println(rightPwm);
 }
 
 void stopMotors() {
@@ -40,7 +44,7 @@ void stopMotors() {
   digitalWrite(RIGHT_IN1, LOW);
   digitalWrite(RIGHT_IN2, LOW);
   logState("STOP");
-  logPins();
+  logPins(0, 0);
 }
 
 void moveForward() {
@@ -51,58 +55,82 @@ void moveForward() {
   ledcWrite(LEFT_ENABLE, DRIVE_PWM);
   ledcWrite(RIGHT_ENABLE, DRIVE_PWM);
   logState("FORWARD");
-  logPins();
+  logPins(DRIVE_PWM, DRIVE_PWM);
 }
 
-void turnLeft() {
-  digitalWrite(LEFT_IN1, LOW);
-  digitalWrite(LEFT_IN2, HIGH);
-  digitalWrite(RIGHT_IN1, HIGH);
-  digitalWrite(RIGHT_IN2, LOW);
-  ledcWrite(LEFT_ENABLE, TURN_PWM);
-  ledcWrite(RIGHT_ENABLE, TURN_PWM);
-  logState("LEFT");
-  logPins();
+int strengthToInnerPwm(int strength) {
+  strength = constrain(strength, TURN_MIN_STRENGTH, 100);
+  return map(strength, TURN_MIN_STRENGTH, 100, TURN_OUTER_PWM - 20, TURN_INNER_PWM);
 }
 
-void turnRight() {
+void curveLeft(int strength = 100) {
+  int innerPwm = strengthToInnerPwm(strength);
   digitalWrite(LEFT_IN1, HIGH);
   digitalWrite(LEFT_IN2, LOW);
-  digitalWrite(RIGHT_IN1, LOW);
-  digitalWrite(RIGHT_IN2, HIGH);
-  ledcWrite(LEFT_ENABLE, TURN_PWM);
-  ledcWrite(RIGHT_ENABLE, TURN_PWM);
-  logState("RIGHT");
-  logPins();
+  digitalWrite(RIGHT_IN1, HIGH);
+  digitalWrite(RIGHT_IN2, LOW);
+  ledcWrite(LEFT_ENABLE, innerPwm);
+  ledcWrite(RIGHT_ENABLE, TURN_OUTER_PWM);
+  logState("LEFT CURVE");
+  logPins(innerPwm, TURN_OUTER_PWM);
+}
+
+void curveRight(int strength = 100) {
+  int innerPwm = strengthToInnerPwm(strength);
+  digitalWrite(LEFT_IN1, HIGH);
+  digitalWrite(LEFT_IN2, LOW);
+  digitalWrite(RIGHT_IN1, HIGH);
+  digitalWrite(RIGHT_IN2, LOW);
+  ledcWrite(LEFT_ENABLE, TURN_OUTER_PWM);
+  ledcWrite(RIGHT_ENABLE, innerPwm);
+  logState("RIGHT CURVE");
+  logPins(TURN_OUTER_PWM, innerPwm);
 }
 
 void runMotorSelfTest() {
   logState("SELF TEST START");
   moveForward();
   delay(1500);
-  turnLeft();
+  curveLeft();
   delay(1500);
-  turnRight();
+  curveRight();
   delay(1500);
   stopMotors();
   logState("SELF TEST END");
 }
 
-void applyCommand(char command) {
+void applyCommand(char command, int strength = 100) {
   Serial.print("[ESP32] Received command: ");
   Serial.println(command);
+  Serial.print("[ESP32] Turn strength: ");
+  Serial.println(strength);
 
   if (command == 'F') {
     moveForward();
   } else if (command == 'L') {
-    turnRight();
+    curveLeft(strength);
   } else if (command == 'R') {
-    turnLeft();
+    curveRight(strength);
   } else if (command == 'T') {
     runMotorSelfTest();
   } else {
     stopMotors();
   }
+}
+
+void applyCommandLine(String line) {
+  line.trim();
+  if (line.length() == 0) {
+    return;
+  }
+
+  char command = line.charAt(0);
+  int strength = 100;
+  int separatorIndex = line.indexOf(':');
+  if (separatorIndex >= 0 && separatorIndex < line.length() - 1) {
+    strength = line.substring(separatorIndex + 1).toInt();
+  }
+  applyCommand(command, strength);
 }
 
 void setup() {
@@ -126,10 +154,12 @@ void setup() {
 
 void loop() {
   while (SerialBT.available()) {
-    char command = (char) SerialBT.read();
-    if (command == '\n' || command == '\r') {
+    char nextChar = (char) SerialBT.read();
+    if (nextChar == '\n' || nextChar == '\r') {
+      applyCommandLine(commandBuffer);
+      commandBuffer = "";
       continue;
     }
-    applyCommand(command);
+    commandBuffer += nextChar;
   }
 }

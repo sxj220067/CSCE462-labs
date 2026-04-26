@@ -3,14 +3,21 @@ import time
 import config
 
 
+def format_command(command, telemetry=None):
+    if command in {config.CMD_LEFT, config.CMD_RIGHT} and telemetry is not None:
+        return f"{command}:{int(telemetry.get('turn_strength', 100))}"
+    return command
+
+
 class StdoutTransport:
     def __init__(self):
         self._last_command = None
 
-    def send(self, command):
-        if command != self._last_command:
-            print(f"[COMMAND] {command}")
-            self._last_command = command
+    def send(self, command, telemetry=None):
+        payload = format_command(command, telemetry)
+        if payload != self._last_command:
+            print(f"[COMMAND] {payload}")
+            self._last_command = payload
 
     def close(self):
         return None
@@ -31,11 +38,12 @@ class SerialTransport:
         self._last_command = None
         time.sleep(2.0)
 
-    def send(self, command):
-        if command == self._last_command:
+    def send(self, command, telemetry=None):
+        payload = format_command(command, telemetry)
+        if payload == self._last_command:
             return
-        self._serial.write((command + "\n").encode("ascii"))
-        self._last_command = command
+        self._serial.write((payload + "\n").encode("ascii"))
+        self._last_command = payload
 
     def close(self):
         if self._serial is not None:
@@ -56,11 +64,12 @@ class BluetoothTransport:
         self._sock.settimeout(None)
         self._last_command = None
 
-    def send(self, command):
-        if command == self._last_command:
+    def send(self, command, telemetry=None):
+        payload = format_command(command, telemetry)
+        if payload == self._last_command:
             return
-        self._sock.sendall((command + "\n").encode("ascii"))
-        self._last_command = command
+        self._sock.sendall((payload + "\n").encode("ascii"))
+        self._last_command = payload
 
     def close(self):
         if self._sock is not None:

@@ -105,7 +105,7 @@ def main():
 
             now = time.time()
             if command != last_command or (now - last_command_sent_at) >= config.COMMAND_UPDATE_INTERVAL_S:
-                transport.send(command)
+                transport.send(command, telemetry)
                 last_command = command
                 last_command_sent_at = now
 
@@ -114,7 +114,8 @@ def main():
                     f"[STATUS] can_found={can_state is not None} "
                     f"target_found={target is not None} candidates={len(candidate_targets)} "
                     f"missed={missed_target_frames} command={command} raw={raw_command} "
-                    f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']}"
+                    f"distance={telemetry['distance_px']} angle={telemetry['angle_deg']} "
+                    f"turn={telemetry['turn_strength']}"
                 )
                 last_status_print = now
 

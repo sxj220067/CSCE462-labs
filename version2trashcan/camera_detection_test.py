@@ -16,6 +16,10 @@ PINK_TEXT = (203, 192, 255)
 LIGHT_BLUE_TEXT = (255, 220, 120)
 YELLOW_TEXT = (0, 255, 255)
 WHITE_TEXT = (255, 255, 255)
+SAMPLE_TEXT = (255, 255, 255)
+SAMPLE_DOT = (255, 0, 255)
+WINDOW_NAME = "Version2TrashCan Camera Test"
+MAX_CLICK_SAMPLES = 12
 
 
 def _window_available():
@@ -39,6 +43,35 @@ def _format_hsv(mean_hsv):
     if mean_hsv is None:
         return "missing"
     return f"H={mean_hsv[0]} S={mean_hsv[1]} V={mean_hsv[2]}"
+
+
+def _clamp(value, lower, upper):
+    return max(lower, min(upper, value))
+
+
+def _suggest_hsv_range(samples):
+    if not samples:
+        return None
+    h_values = [sample["hsv"][0] for sample in samples]
+    s_values = [sample["hsv"][1] for sample in samples]
+    v_values = [sample["hsv"][2] for sample in samples]
+    lower = (
+        _clamp(min(h_values) - 8, 0, 179),
+        _clamp(min(s_values) - 35, 0, 255),
+        _clamp(min(v_values) - 35, 0, 255),
+    )
+    upper = (
+        _clamp(max(h_values) + 8, 0, 179),
+        _clamp(max(s_values) + 35, 0, 255),
+        _clamp(max(v_values) + 35, 0, 255),
+    )
+    return lower, upper
+
+
+def _format_sample(sample):
+    if sample is None:
+        return "click a marker/object"
+    return f"x={sample['point'][0]} y={sample['point'][1]} BGR={sample['bgr']} HSV={sample['hsv']}"
 
 
 def _format_marker(marker):
@@ -82,6 +115,57 @@ def _draw_calibration_text(frame, hsv_values):
         y += 22
 
 
+def _draw_click_samples(frame, samples):
+    y = 252
+    latest = samples[-1] if samples else None
+    cv2.putText(frame, f"Click sample: {_format_sample(latest)}", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, SAMPLE_TEXT, 1)
+    y += 20
+
+    suggested = _suggest_hsv_range(samples)
+    if suggested is None:
+        cv2.putText(frame, "Suggested range: no samples yet", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, SAMPLE_TEXT, 1)
+    else:
+        lower, upper = suggested
+        cv2.putText(frame, f"Suggested range: ({lower}, {upper})", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, SAMPLE_TEXT, 1)
+    y += 20
+
+    cv2.putText(frame, "Left-click to sample, c clears samples", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, SAMPLE_TEXT, 1)
+    for sample in samples[-MAX_CLICK_SAMPLES:]:
+        x, y_pos = sample["point"]
+        cv2.drawMarker(frame, (x, y_pos), SAMPLE_DOT, markerType=cv2.MARKER_CROSS, markerSize=12, thickness=1)
+
+
+def _sample_patch(frame, hsv_frame, x, y):
+    height, width = frame.shape[:2]
+    x0 = _clamp(x - 2, 0, width - 1)
+    x1 = _clamp(x + 3, 0, width)
+    y0 = _clamp(y - 2, 0, height - 1)
+    y1 = _clamp(y + 3, 0, height)
+    bgr = tuple(int(round(value)) for value in cv2.mean(frame[y0:y1, x0:x1])[:3])
+    hsv = tuple(int(round(value)) for value in cv2.mean(hsv_frame[y0:y1, x0:x1])[:3])
+    return {"point": (x, y), "bgr": bgr, "hsv": hsv}
+
+
+def _make_mouse_callback(sample_state):
+    def handle_mouse(event, x, y, flags, userdata):
+        del flags, userdata
+        if event != cv2.EVENT_LBUTTONDOWN:
+            return
+        frame = sample_state["frame"]
+        hsv_frame = sample_state["hsv_frame"]
+        if frame is None or hsv_frame is None:
+            return
+        sample = _sample_patch(frame, hsv_frame, x, y)
+        sample_state["samples"].append(sample)
+        sample_state["samples"] = sample_state["samples"][-MAX_CLICK_SAMPLES:]
+        suggested = _suggest_hsv_range(sample_state["samples"])
+        print(f"[CLICK SAMPLE] {_format_sample(sample)}")
+        if suggested is not None:
+            print(f"[CLICK SAMPLE] suggested HSV range: ({suggested[0]}, {suggested[1]})")
+
+    return handle_mouse
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Test ceiling/wall camera detection for the trash can markers and target object."
@@ -115,6 +199,7 @@ def main():
     window_enabled = config.SHOW_WINDOW and not args.no_window and _window_available()
     started_at = time.time()
     last_status_print = 0.0
+    sample_state = {"frame": None, "hsv_frame": None, "samples": []}
 
     print(
         "Camera detection test starting. "
@@ -122,6 +207,9 @@ def main():
     )
     print(f"Preview window: {'on' if window_enabled else 'off'}")
     print(f"Camera color mode: {config.CAMERA_COLOR_MODE}")
+    if window_enabled:
+        cv2.namedWindow(WINDOW_NAME)
+        cv2.setMouseCallback(WINDOW_NAME, _make_mouse_callback(sample_state))
 
     try:
         while True:
@@ -135,6 +223,8 @@ def main():
             target = candidates[0] if candidates else None
             command, telemetry = compute_command(can_state, target)
             hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            sample_state["frame"] = frame
+            sample_state["hsv_frame"] = hsv_frame
             hsv_values = {
                 "front": _mean_hsv_for_marker(hsv_frame, can_state["front"] if can_state is not None else None),
                 "back": _mean_hsv_for_marker(hsv_frame, can_state["back"] if can_state is not None else None),
@@ -150,6 +240,7 @@ def main():
                 overlay = frame.copy()
                 draw_detection(overlay, can_state, target, command, telemetry)
                 _draw_calibration_text(overlay, hsv_values)
+                _draw_click_samples(overlay, sample_state["samples"])
                 cv2.putText(
                     overlay,
                     "camera test only - no motor commands sent",
@@ -163,6 +254,9 @@ def main():
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q") or key == 27:
                     break
+                if key == ord("c"):
+                    sample_state["samples"].clear()
+                    print("Click samples cleared.")
 
             if args.duration > 0 and now - started_at >= args.duration:
                 break

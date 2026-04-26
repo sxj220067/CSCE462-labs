@@ -66,6 +66,14 @@ The preview window should show:
 - yellow box around the target object
 - measured HSV values for each detected color, next to the configured HSV range
 
+You can also left-click the preview image to sample the color under the cursor. The test will print and display:
+
+- clicked pixel location
+- average BGR/HSV from a small patch
+- suggested HSV range from recent clicks
+
+Press `c` to clear click samples.
+
 For a terminal-only test:
 
 ```bash

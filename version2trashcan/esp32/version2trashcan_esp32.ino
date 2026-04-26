@@ -13,7 +13,7 @@ const int DRIVE_PWM = 255;
 const int TURN_MIN_PWM = 150;
 const int TURN_MAX_PWM = 255;
 const int TURN_MIN_STRENGTH = 20;
-const bool SWAP_TURN_DIRECTIONS = true;
+const bool SWAP_TURN_DIRECTIONS = false;
 
 String commandBuffer = "";
 

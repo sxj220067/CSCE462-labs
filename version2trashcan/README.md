@@ -240,6 +240,7 @@ You will likely need to tune these first in `config.py`:
 - `AVOID_WHITE_OBSTACLES`
 - `OBSTACLE_PATH_CLEARANCE_PX`
 - `OBSTACLE_AVOID_OFFSET_PX`
+- `IGNORE_OBSTACLES_INSIDE_CAN_PX`
 - `LOCK_MAX_JUMP_PX`
 
 Turn tuning:

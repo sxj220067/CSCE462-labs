@@ -14,10 +14,10 @@ WINDOW_NAME = "Version2TrashCan"
 STATUS_PRINT_INTERVAL = 1.0
 
 # Marker and target detection
-BLUR_SIZE = (5, 5)
-MORPH_KERNEL = (5, 5)
+BLUR_SIZE = (3, 3)
+MORPH_KERNEL = (3, 3)
 MARKER_DILATE_ITERATIONS = 3
-MIN_MARKER_AREA = 10
+MIN_MARKER_AREA = 3
 MAX_MARKER_AREA = 20000
 MIN_TARGET_AREA = 180
 MAX_TARGET_AREA = 35000
@@ -30,11 +30,11 @@ MAX_BOUNDARY_AREA = FRAME_WIDTH * FRAME_HEIGHT
 # Adjust these for your real lighting and tape/object colors.
 FRONT_MARKER_HSV_RANGES = (
     # Pink/magenta front marker. Tuned around measured HSV H=137 S=161 V=254.
-    ((127, 95, 185), (147, 230, 255)),
+    ((120, 50, 150), (155, 255, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
     # Green back marker. Tuned around measured HSV H=78 S=143 V=254.
-    ((68, 80, 185), (88, 210, 255)),
+    ((60, 40, 150), (95, 255, 255)),
 )
 TARGET_HSV_RANGES = (
     # Tennis ball target. Tuned around measured HSV H=90 S=107 V=255.

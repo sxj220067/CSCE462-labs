@@ -50,7 +50,7 @@ def main():
     transport = GpioMotorTransport()
     server = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
     try:
-        server.bind(("", config.MOTOR_BLUETOOTH_CHANNEL))
+        server.bind(("00:00:00:00:00:00", config.MOTOR_BLUETOOTH_CHANNEL))
         server.listen(1)
         print(f"[MOTOR BT SERVER] listening on RFCOMM channel {config.MOTOR_BLUETOOTH_CHANNEL}")
         while True:

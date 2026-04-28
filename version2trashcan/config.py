@@ -37,8 +37,8 @@ BACK_MARKER_HSV_RANGES = (
     ((67, 80, 185), (87, 210, 255)),
 )
 TARGET_HSV_RANGES = (
-    # Tennis ball target. Tuned around measured HSV H=90 S=107 V=255.
-    ((86, 65, 185), (104, 175, 255)),
+    # Tennis ball target. Tuned around measured HSV H=90 S=95 V=255.
+    ((86, 45, 185), (104, 155, 255)),
 )
 OBSTACLE_HSV_RANGES = (
     # White obstacle: bright, low saturation.

@@ -7,7 +7,7 @@ import numpy as np
 
 import config
 from camera import create_capture, read_frame, release_capture
-from controller import choose_target, compute_command
+from controller import compute_command
 from detection import create_detector
 from transport import create_transport
 
@@ -406,7 +406,7 @@ def main():
                 locked_target = None
                 target_lost_since = None
             else:
-                target = choose_target(candidate_targets, locked_target)
+                target = candidate_targets[0] if candidate_targets else None
                 if target is not None:
                     target_seen_once = True
                     locked_target = target
@@ -508,11 +508,8 @@ def main():
                 obstacle_distance is not None
                 and obstacle_distance <= config.OBSTACLE_DANGER_DISTANCE_PX
             )
-            stop_distance_px = config.VIEW_SAFE_STOP_PX if view_safety else config.HOME_STOP_PX if returning_home else 0.0
+            stop_distance_px = config.VIEW_SAFE_STOP_PX if view_safety else config.HOME_STOP_PX if returning_home else None
             raw_command, telemetry = compute_command(can_state, command_target, stop_distance_px)
-            if target_inside and not returning_home and not view_safety:
-                raw_command = config.CMD_STOP
-                telemetry = {"distance_px": 0.0, "angle_deg": 0.0, "turn_strength": 0}
             if boundary_safety:
                 raw_command = config.CMD_STOP
                 telemetry = {"distance_px": None, "angle_deg": None, "turn_strength": 0}

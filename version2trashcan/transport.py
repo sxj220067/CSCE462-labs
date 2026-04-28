@@ -161,11 +161,17 @@ class GpioMotorTransport:
             self._set_left_motor(True, config.GPIO_DRIVE_DUTY)
             self._set_right_motor(True, config.GPIO_DRIVE_DUTY)
         elif command == config.CMD_LEFT:
-            self._set_left_motor(True, config.GPIO_TURN_INNER_DUTY)
+            if config.GPIO_TURN_MODE == "spin":
+                self._set_left_motor(False, config.GPIO_TURN_MAX_DUTY)
+            else:
+                self._set_left_motor(True, config.GPIO_TURN_INNER_DUTY)
             self._set_right_motor(True, config.GPIO_TURN_MAX_DUTY)
         elif command == config.CMD_RIGHT:
             self._set_left_motor(True, config.GPIO_TURN_MAX_DUTY)
-            self._set_right_motor(True, config.GPIO_TURN_INNER_DUTY)
+            if config.GPIO_TURN_MODE == "spin":
+                self._set_right_motor(False, config.GPIO_TURN_MAX_DUTY)
+            else:
+                self._set_right_motor(True, config.GPIO_TURN_INNER_DUTY)
         else:
             self.stop()
 

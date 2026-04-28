@@ -111,6 +111,7 @@ GPIO_DRIVE_DUTY = 100
 GPIO_TURN_MIN_DUTY = 100
 GPIO_TURN_MAX_DUTY = 100
 GPIO_TURN_INNER_DUTY = 0
+GPIO_TURN_MODE = "spin"  # "spin" turns in place, "pivot" stops the inside wheel.
 MOTOR_SERVER_HOST = "motorpi.local"
 MOTOR_SERVER_PORT = 4620
 MOTOR_SERVER_CONNECT_TIMEOUT_S = 5.0

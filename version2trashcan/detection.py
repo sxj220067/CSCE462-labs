@@ -114,7 +114,6 @@ class WallCameraDetector:
         front_mask = _mask_from_ranges(hsv, config.FRONT_MARKER_HSV_RANGES)
         back_mask = _mask_from_ranges(hsv, config.BACK_MARKER_HSV_RANGES)
         target_mask = _mask_from_ranges(hsv, config.TARGET_HSV_RANGES)
-        boundary_mask = _mask_from_ranges(hsv, config.BOUNDARY_HSV_RANGES)
         marker_mask = cv2.bitwise_or(front_mask, back_mask)
         target_mask = cv2.bitwise_and(target_mask, cv2.bitwise_not(marker_mask))
         if config.AVOID_WHITE_OBSTACLES:
@@ -123,11 +122,16 @@ class WallCameraDetector:
         else:
             obstacle_mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
             obstacle_candidates = []
+        if config.ENABLE_WHITE_BOUNDARY:
+            boundary_mask = _mask_from_ranges(hsv, config.BOUNDARY_HSV_RANGES)
+            boundary_candidates = _find_boundary_candidates(boundary_mask)
+        else:
+            boundary_mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
+            boundary_candidates = []
 
         front_marker = _find_largest_blob(front_mask, config.MIN_MARKER_AREA, config.MAX_MARKER_AREA)
         back_marker = _find_largest_blob(back_mask, config.MIN_MARKER_AREA, config.MAX_MARKER_AREA)
         target_candidates = _find_target_candidates(target_mask)
-        boundary_candidates = _find_boundary_candidates(boundary_mask)
 
         can_state = None
         if front_marker is not None and back_marker is not None:

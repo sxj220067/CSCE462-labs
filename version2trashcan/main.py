@@ -389,7 +389,11 @@ def main():
             result = detector.detect(frame)
             can_state = result["can_state"]
             candidate_targets = result["target_candidates"]
-            obstacles = filter_obstacles_inside_can(can_state, result["obstacle_candidates"])
+            obstacles = (
+                filter_obstacles_inside_can(can_state, result["obstacle_candidates"])
+                if config.AVOID_WHITE_OBSTACLES
+                else []
+            )
             boundaries = result["boundary_candidates"] if config.ENABLE_WHITE_BOUNDARY else []
             boundary_mask = result["boundary_mask"] if config.ENABLE_WHITE_BOUNDARY else None
             if home_center is None and can_state is not None:
@@ -414,13 +418,13 @@ def main():
                 else:
                     locked_target = None
                     target = None
-                    if config.RETURN_HOME_WHEN_TARGET_LOST and target_seen_once:
+                    if config.RETURN_HOME_WHEN_TARGET_LOST:
                         if target_lost_since is None:
                             target_lost_since = now
                         elif now - target_lost_since >= config.TARGET_LOST_RETURN_HOME_SECONDS:
                             return_home_mode = True
                             target_lost_since = None
-                            print("Target lost for 2.0s. Returning home.")
+                            print("No target seen for 2.0s. Returning home.")
                     missed_target_frames = 0
 
             target_inside = False
@@ -437,7 +441,10 @@ def main():
                         target_collected = True
                         return_home_mode = config.RETURN_HOME_WHEN_TARGET_COLLECTED
                         locked_target = None
-                        print("Target collected. Returning home.")
+                        if return_home_mode:
+                            print("Target collected. Returning home.")
+                        else:
+                            print("Target reached. Stopping.")
                 else:
                     target_inside_since = None
 
@@ -463,7 +470,7 @@ def main():
                     view_safety = True
 
             avoidance_target = None
-            if not view_safety:
+            if config.AVOID_WHITE_OBSTACLES and not view_safety:
                 avoidance_target = choose_avoidance_target(can_state, command_target, obstacles)
                 if avoidance_target is not None:
                     if avoidance_target.get("no_path") and config.RETURN_HOME_WHEN_OBSTACLE_BLOCKED:

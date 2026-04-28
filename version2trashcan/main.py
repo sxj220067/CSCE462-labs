@@ -1,4 +1,5 @@
 import os
+import math
 import time
 
 import cv2
@@ -8,6 +9,15 @@ from camera import create_capture, read_frame, release_capture
 from controller import compute_command
 from detection import create_detector
 from transport import create_transport
+
+
+def target_inside_trash_can(can_state, target):
+    if can_state is None or target is None:
+        return False
+
+    dx = target["center"][0] - can_state["center"][0]
+    dy = target["center"][1] - can_state["center"][1]
+    return math.hypot(dx, dy) <= config.TARGET_COLLECTED_DISTANCE_PX
 
 
 def draw_detection(
@@ -63,7 +73,7 @@ def draw_detection(
     cv2.putText(frame, f"Command: {command}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2)
     cv2.putText(frame, f"Distance px: {dist_px if dist_px is not None else 'n/a'}", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
     cv2.putText(frame, f"Angle deg: {angle_deg if angle_deg is not None else 'n/a'}", (10, 135), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
-    cv2.putText(frame, "q/Esc quit", (10, config.FRAME_HEIGHT - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+    cv2.putText(frame, "q/Esc quit, h set home", (10, config.FRAME_HEIGHT - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
 
 def main():
@@ -77,6 +87,7 @@ def main():
     last_command = None
     home_center = None
     target_lost_since = None
+    target_inside_since = None
     return_home_mode = False
 
     print(
@@ -102,29 +113,39 @@ def main():
 
             if target is not None:
                 target_lost_since = None
-                return_home_mode = False
-                command_target = target
-                returning_home = False
-                stop_distance_px = None
+                if target_inside_trash_can(can_state, target):
+                    if target_inside_since is None:
+                        target_inside_since = now
+                    elif now - target_inside_since >= config.TARGET_COLLECTED_SECONDS:
+                        return_home_mode = config.RETURN_HOME_WHEN_TARGET_COLLECTED
+                        print("Target inside trash can for 2.0s. Returning home.")
+                else:
+                    target_inside_since = None
             else:
+                target_inside_since = None
                 if target_lost_since is None:
                     target_lost_since = now
                 elif now - target_lost_since >= config.TARGET_LOST_RETURN_HOME_SECONDS:
                     return_home_mode = True
 
-                if return_home_mode and home_center is not None:
-                    command_target = {"center": home_center}
-                    returning_home = True
-                    stop_distance_px = config.HOME_STOP_PX
-                else:
-                    command_target = None
-                    returning_home = False
-                    stop_distance_px = None
+            if return_home_mode and home_center is not None:
+                command_target = {"center": home_center}
+                returning_home = True
+                stop_distance_px = config.HOME_STOP_PX
+            elif target is not None:
+                command_target = target
+                returning_home = False
+                stop_distance_px = None
+            else:
+                command_target = None
+                returning_home = False
+                stop_distance_px = None
 
             command, telemetry = compute_command(can_state, command_target, stop_distance_px)
             if returning_home and command == config.CMD_STOP:
                 return_home_mode = False
                 target_lost_since = None
+                target_inside_since = None
                 print("Arrived home.")
 
             if command != last_command or (now - last_command_sent_at) >= config.COMMAND_UPDATE_INTERVAL_S:
@@ -153,6 +174,12 @@ def main():
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q") or key == 27:
                     break
+                if key == ord("h") and can_state is not None:
+                    home_center = can_state["center"]
+                    return_home_mode = False
+                    target_lost_since = None
+                    target_inside_since = None
+                    print(f"Home position reset to {home_center}")
 
     except KeyboardInterrupt:
         print("Interrupted by user")

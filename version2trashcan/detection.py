@@ -87,6 +87,26 @@ def _find_obstacle_candidates(mask):
     return candidates
 
 
+def _find_boundary_candidates(mask):
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    candidates = []
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < config.MIN_BOUNDARY_AREA or area > config.MAX_BOUNDARY_AREA:
+            continue
+        x, y, w, h = cv2.boundingRect(contour)
+        candidates.append(
+            {
+                "bbox": (x, y, w, h),
+                "center": (int(x + (w / 2)), int(y + (h / 2))),
+                "area": area,
+                "contour": contour,
+            }
+        )
+    candidates.sort(key=lambda item: item["area"], reverse=True)
+    return candidates
+
+
 class WallCameraDetector:
     def detect(self, frame):
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -95,11 +115,13 @@ class WallCameraDetector:
         back_mask = _mask_from_ranges(hsv, config.BACK_MARKER_HSV_RANGES)
         target_mask = _mask_from_ranges(hsv, config.TARGET_HSV_RANGES)
         obstacle_mask = _mask_from_ranges(hsv, config.OBSTACLE_HSV_RANGES)
+        boundary_mask = _mask_from_ranges(hsv, config.BOUNDARY_HSV_RANGES)
 
         front_marker = _find_largest_blob(front_mask, config.MIN_MARKER_AREA, config.MAX_MARKER_AREA)
         back_marker = _find_largest_blob(back_mask, config.MIN_MARKER_AREA, config.MAX_MARKER_AREA)
         target_candidates = _find_target_candidates(target_mask)
         obstacle_candidates = _find_obstacle_candidates(obstacle_mask)
+        boundary_candidates = _find_boundary_candidates(boundary_mask)
 
         can_state = None
         if front_marker is not None and back_marker is not None:
@@ -123,9 +145,11 @@ class WallCameraDetector:
             "back_mask": back_mask,
             "target_mask": target_mask,
             "obstacle_mask": obstacle_mask,
+            "boundary_mask": boundary_mask,
             "can_state": can_state,
             "target_candidates": target_candidates,
             "obstacle_candidates": obstacle_candidates,
+            "boundary_candidates": boundary_candidates,
         }
 
 

@@ -12,7 +12,7 @@ def main():
 
     transport = create_transport()
     try:
-        print(f"Sending command {command} to {config.BLUETOOTH_MAC_ADDRESS}")
+        print(f"Sending command {command} using transport={config.COMMAND_TRANSPORT}")
         transport.send(command)
         time.sleep(0.2)
     finally:

@@ -1,13 +1,13 @@
 # Version2TrashCan
 
-`version2trashcan` is an ESP32-focused wall-camera trash can project.
+`version2trashcan` is a Raspberry Pi wall-camera trash can project.
 
 Recommended architecture:
 
 - Raspberry Pi + fixed ceiling/wall camera
-- ESP32/Arduino motor controller on the trash can
-- Bluetooth commands from Pi to ESP32
-- L298N motor driver connected to the ESP32
+- Raspberry Pi motor controller on the trash can
+- Direct GPIO commands from Pi to L298N
+- L298N motor driver connected to the Pi
 
 The fixed camera watches:
 - the trash can
@@ -37,7 +37,8 @@ The target object should use one detectable color:
 - `camera.py`: OpenCV/Picamera2 capture
 - `detection.py`: marker and target color detection
 - `controller.py`: heading math and command selection
-- `transport.py`: command output to ESP32 over Bluetooth, USB serial, or stdout
+- `transport.py`: command output to Raspberry Pi GPIO, ESP32 Bluetooth/USB serial, or stdout
+- `motor_server.py`: network motor receiver for a separate motor-control Raspberry Pi
 - `config.py`: tuning and color ranges
 - `esp32/version2trashcan_esp32.ino`: starter ESP32 Bluetooth + motor sketch
 
@@ -147,14 +148,58 @@ python3 turn_calibration_test.py R --strength 75 --duration 1.0
 
 ## Default mode
 
-The project is configured for ESP32 Bluetooth by default. The Raspberry Pi runs the camera code and sends `F`, `L`, `R`, or `S` over Bluetooth. The ESP32/Arduino sketch receives those commands and drives the L298N motor driver.
+The project is configured for a two-Raspberry-Pi setup by default. The camera Pi runs the camera code and sends motor commands over the network. The motor Pi receives those commands and drives the L298N motor driver directly with GPIO.
 
 Set these values in `config.py` before running:
 
 ```python
-COMMAND_TRANSPORT = "bluetooth"
-BLUETOOTH_DEVICE_NAME = "Version2TrashCan"
-BLUETOOTH_MAC_ADDRESS = "AA:BB:CC:DD:EE:FF"
+COMMAND_TRANSPORT = "tcp"
+MOTOR_SERVER_HOST = "motorpi.local"
+MOTOR_SERVER_PORT = 4620
+```
+
+On the motor Pi, run:
+
+```bash
+cd /Users/harp12/CSCE462-labs/version2trashcan
+python3 motor_server.py
+```
+
+On the camera Pi, run:
+
+```bash
+cd /Users/harp12/CSCE462-labs/version2trashcan
+python3 main.py
+```
+
+If `motorpi.local` does not resolve, set `MOTOR_SERVER_HOST` to the motor Pi's IP address from `hostname -I`.
+
+## Raspberry Pi GPIO mode
+
+Recommended motor Pi + L298N wiring uses BCM GPIO numbers:
+
+- `GPIO25` -> `IN1`
+- `GPIO26` -> `IN2`
+- `GPIO27` -> `IN3`
+- `GPIO14` -> `IN4`
+- `GPIO13` -> `ENA`
+- `GPIO12` -> `ENB`
+- `Pi GND` -> `L298N GND`
+- Motor power supply ground -> `L298N GND`
+- Left motor -> `OUT1` / `OUT2`
+- Right motor -> `OUT3` / `OUT4`
+
+Important:
+
+- Share ground between the Pi and the motor driver.
+- Do not power the motors from the Pi.
+- Remove the `ENA` / `ENB` jumpers on the L298N if you want PWM speed control.
+- Install GPIO support on the Pi if needed: `sudo apt install python3-rpi.gpio`.
+
+If the camera and motors are on the same Pi, use:
+
+```python
+COMMAND_TRANSPORT = "gpio"
 ```
 
 ## Bluetooth mode

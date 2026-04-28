@@ -116,6 +116,8 @@ class WallCameraDetector:
         target_mask = _mask_from_ranges(hsv, config.TARGET_HSV_RANGES)
         obstacle_mask = _mask_from_ranges(hsv, config.OBSTACLE_HSV_RANGES)
         boundary_mask = _mask_from_ranges(hsv, config.BOUNDARY_HSV_RANGES)
+        marker_mask = cv2.bitwise_or(front_mask, back_mask)
+        target_mask = cv2.bitwise_and(target_mask, cv2.bitwise_not(marker_mask))
 
         front_marker = _find_largest_blob(front_mask, config.MIN_MARKER_AREA, config.MAX_MARKER_AREA)
         back_marker = _find_largest_blob(back_mask, config.MIN_MARKER_AREA, config.MAX_MARKER_AREA)

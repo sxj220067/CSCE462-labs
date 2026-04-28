@@ -91,7 +91,7 @@ COMMAND_CHANGE_CONFIRMATIONS = 3
 SWAP_TURN_COMMANDS = True
 
 # Command transport
-COMMAND_TRANSPORT = "tcp"  # "stdout", "serial", "bluetooth", "gpio", or "tcp"
+COMMAND_TRANSPORT = "pi_bluetooth"  # "stdout", "serial", "bluetooth", "gpio", "tcp", or "pi_bluetooth"
 SERIAL_PORT = "/dev/ttyUSB0"
 SERIAL_BAUDRATE = 9600
 SERIAL_TIMEOUT_S = 0.25
@@ -112,6 +112,9 @@ GPIO_TURN_MAX_DUTY = 100
 MOTOR_SERVER_HOST = "motorpi.local"
 MOTOR_SERVER_PORT = 4620
 MOTOR_SERVER_CONNECT_TIMEOUT_S = 5.0
+MOTOR_BLUETOOTH_ADDRESS = "AA:BB:CC:DD:EE:FF"
+MOTOR_BLUETOOTH_CHANNEL = 1
+MOTOR_BLUETOOTH_CONNECT_TIMEOUT_S = 8.0
 
 # Supported commands
 CMD_FORWARD = "F"

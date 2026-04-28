@@ -6,7 +6,8 @@ Recommended architecture:
 
 - Raspberry Pi + fixed ceiling/wall camera
 - Raspberry Pi motor controller on the trash can
-- Direct GPIO commands from Pi to L298N
+- Bluetooth commands from camera Pi to motor Pi
+- Direct GPIO commands from motor Pi to L298N
 - L298N motor driver connected to the Pi
 
 The fixed camera watches:
@@ -38,7 +39,8 @@ The target object should use one detectable color:
 - `detection.py`: marker and target color detection
 - `controller.py`: heading math and command selection
 - `transport.py`: command output to Raspberry Pi GPIO, ESP32 Bluetooth/USB serial, or stdout
-- `motor_server.py`: network motor receiver for a separate motor-control Raspberry Pi
+- `motor_bluetooth_server.py`: Bluetooth motor receiver for a separate motor-control Raspberry Pi
+- `motor_server.py`: TCP network motor receiver for a separate motor-control Raspberry Pi
 - `config.py`: tuning and color ranges
 - `esp32/version2trashcan_esp32.ino`: starter ESP32 Bluetooth + motor sketch
 
@@ -148,21 +150,50 @@ python3 turn_calibration_test.py R --strength 75 --duration 1.0
 
 ## Default mode
 
-The project is configured for a two-Raspberry-Pi setup by default. The camera Pi runs the camera code and sends motor commands over the network. The motor Pi receives those commands and drives the L298N motor driver directly with GPIO.
+The project is configured for a two-Raspberry-Pi Bluetooth setup by default. The camera Pi runs the camera code and sends motor commands over Bluetooth. The motor Pi receives those commands and drives the L298N motor driver directly with GPIO.
 
 Set these values in `config.py` before running:
 
 ```python
-COMMAND_TRANSPORT = "tcp"
-MOTOR_SERVER_HOST = "motorpi.local"
-MOTOR_SERVER_PORT = 4620
+COMMAND_TRANSPORT = "pi_bluetooth"
+MOTOR_BLUETOOTH_ADDRESS = "AA:BB:CC:DD:EE:FF"
+MOTOR_BLUETOOTH_CHANNEL = 1
 ```
 
-On the motor Pi, run:
+Pair the Pis first. On the motor Pi, find its Bluetooth address:
+
+```bash
+bluetoothctl show
+```
+
+Use the `Controller XX:XX:XX:XX:XX:XX` address as `MOTOR_BLUETOOTH_ADDRESS` in `config.py` on the camera Pi.
+
+On both Pis, make Bluetooth discoverable/pairable while pairing:
+
+```bash
+bluetoothctl
+power on
+agent on
+default-agent
+discoverable on
+pairable on
+```
+
+From the camera Pi's `bluetoothctl`, pair and trust the motor Pi:
+
+```text
+scan on
+pair AA:BB:CC:DD:EE:FF
+trust AA:BB:CC:DD:EE:FF
+scan off
+quit
+```
+
+On the motor Pi, run the Bluetooth motor server:
 
 ```bash
 cd /Users/harp12/CSCE462-labs/version2trashcan
-python3 motor_server.py
+python3 motor_bluetooth_server.py
 ```
 
 On the camera Pi, run:
@@ -171,8 +202,6 @@ On the camera Pi, run:
 cd /Users/harp12/CSCE462-labs/version2trashcan
 python3 main.py
 ```
-
-If `motorpi.local` does not resolve, set `MOTOR_SERVER_HOST` to the motor Pi's IP address from `hostname -I`.
 
 ## Raspberry Pi GPIO mode
 
@@ -201,6 +230,16 @@ If the camera and motors are on the same Pi, use:
 ```python
 COMMAND_TRANSPORT = "gpio"
 ```
+
+If you want Wi-Fi/TCP instead of Bluetooth, use:
+
+```python
+COMMAND_TRANSPORT = "tcp"
+MOTOR_SERVER_HOST = "motorpi.local"
+MOTOR_SERVER_PORT = 4620
+```
+
+Then run `python3 motor_server.py` on the motor Pi.
 
 ## Bluetooth mode
 

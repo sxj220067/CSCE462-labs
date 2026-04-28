@@ -202,6 +202,31 @@ class TcpTransport:
             self._sock.close()
 
 
+class PiBluetoothTransport:
+    def __init__(self):
+        import socket
+
+        if not getattr(socket, "AF_BLUETOOTH", None):
+            raise RuntimeError("This Python build does not support Bluetooth sockets.")
+
+        self._sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        self._sock.settimeout(config.MOTOR_BLUETOOTH_CONNECT_TIMEOUT_S)
+        self._sock.connect((config.MOTOR_BLUETOOTH_ADDRESS, config.MOTOR_BLUETOOTH_CHANNEL))
+        self._sock.settimeout(None)
+        self._last_command = None
+
+    def send(self, command, telemetry=None):
+        payload = format_command(command, telemetry)
+        if payload == self._last_command:
+            return
+        self._sock.sendall((payload + "\n").encode("ascii"))
+        self._last_command = payload
+
+    def close(self):
+        if self._sock is not None:
+            self._sock.close()
+
+
 def create_transport():
     if config.COMMAND_TRANSPORT == "serial":
         return SerialTransport()
@@ -211,4 +236,6 @@ def create_transport():
         return GpioMotorTransport()
     if config.COMMAND_TRANSPORT == "tcp":
         return TcpTransport()
+    if config.COMMAND_TRANSPORT == "pi_bluetooth":
+        return PiBluetoothTransport()
     return StdoutTransport()

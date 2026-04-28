@@ -6,9 +6,13 @@ import cv2
 
 import config
 from camera import create_capture, read_frame, release_capture
-from controller import compute_command
+from controller import clamp, compute_command, signed_angle_deg
 from detection import create_detector
 from transport import create_transport
+
+
+def screen_center():
+    return (int(config.FRAME_WIDTH / 2), int(config.FRAME_HEIGHT / 2))
 
 
 def target_inside_trash_can(can_state, target):
@@ -18,6 +22,23 @@ def target_inside_trash_can(can_state, target):
     dx = target["center"][0] - can_state["center"][0]
     dy = target["center"][1] - can_state["center"][1]
     return math.hypot(dx, dy) <= config.TARGET_COLLECTED_DISTANCE_PX
+
+
+def compute_heading_command(can_state, point):
+    if can_state is None:
+        return config.CMD_STOP, {"distance_px": None, "angle_deg": None, "turn_strength": 0}
+
+    center = can_state["center"]
+    target_vector = (point[0] - center[0], point[1] - center[1])
+    angle_deg = signed_angle_deg(can_state["heading"], target_vector)
+    if abs(angle_deg) <= config.HEADING_ALIGNMENT_DEG:
+        return config.CMD_STOP, {"distance_px": 0.0, "angle_deg": angle_deg, "turn_strength": 0}
+
+    turn_ratio = min(1.0, abs(angle_deg) / config.FULL_TURN_ANGLE_DEG)
+    turn_strength = int(round(turn_ratio * 100 * config.TURN_STRENGTH_SCALE))
+    turn_strength = clamp(turn_strength, config.MIN_TURN_STRENGTH, config.MAX_TURN_STRENGTH)
+    command = config.CMD_LEFT if angle_deg < 0.0 else config.CMD_RIGHT
+    return command, {"distance_px": 0.0, "angle_deg": angle_deg, "turn_strength": turn_strength}
 
 
 def draw_detection(
@@ -63,6 +84,8 @@ def draw_detection(
         cv2.line(frame, can_state["center"], target["center"], (0, 255, 255), 2)
     elif can_state is not None and returning_home and home_center is not None:
         cv2.line(frame, can_state["center"], home_center, (255, 255, 0), 2)
+    elif can_state is not None and home_center is not None:
+        cv2.line(frame, can_state["center"], screen_center(), (255, 255, 0), 1)
 
     if home_center is not None:
         cv2.drawMarker(frame, home_center, (255, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=18, thickness=2)
@@ -89,6 +112,7 @@ def main():
     target_lost_since = None
     target_inside_since = None
     return_home_mode = False
+    align_home_mode = False
 
     print(
         f"Version2TrashCan starting: backend={config.CAMERA_BACKEND}, "
@@ -113,6 +137,7 @@ def main():
 
             if target is not None:
                 target_lost_since = None
+                align_home_mode = False
                 if target_inside_trash_can(can_state, target):
                     if target_inside_since is None:
                         target_inside_since = now
@@ -132,6 +157,10 @@ def main():
                 command_target = {"center": home_center}
                 returning_home = True
                 stop_distance_px = config.HOME_STOP_PX
+            elif align_home_mode:
+                command_target = None
+                returning_home = False
+                stop_distance_px = None
             elif target is not None:
                 command_target = target
                 returning_home = False
@@ -141,12 +170,20 @@ def main():
                 returning_home = False
                 stop_distance_px = None
 
-            command, telemetry = compute_command(can_state, command_target, stop_distance_px)
+            if align_home_mode:
+                command, telemetry = compute_heading_command(can_state, screen_center())
+                if command == config.CMD_STOP:
+                    align_home_mode = False
+                    print("Facing center. Stopping.")
+            else:
+                command, telemetry = compute_command(can_state, command_target, stop_distance_px)
+
             if returning_home and command == config.CMD_STOP:
                 return_home_mode = False
                 target_lost_since = None
                 target_inside_since = None
-                print("Arrived home.")
+                align_home_mode = True
+                print("Arrived home. Facing center.")
 
             if command != last_command or (now - last_command_sent_at) >= config.COMMAND_UPDATE_INTERVAL_S:
                 transport.send(command, telemetry)
@@ -160,6 +197,7 @@ def main():
                     f"target_found={target is not None} "
                     f"candidates={len(candidates)} "
                     f"returning_home={returning_home} "
+                    f"aligning_home={align_home_mode} "
                     f"command={command} "
                     f"distance={telemetry['distance_px']} "
                     f"angle={telemetry['angle_deg']} "
@@ -177,6 +215,7 @@ def main():
                 if key == ord("h") and can_state is not None:
                     home_center = can_state["center"]
                     return_home_mode = False
+                    align_home_mode = False
                     target_lost_since = None
                     target_inside_since = None
                     print(f"Home position reset to {home_center}")

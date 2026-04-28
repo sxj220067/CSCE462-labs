@@ -429,9 +429,13 @@ def main():
 
             target_inside = False
             if can_state is not None and target is not None:
-                dx = target["center"][0] - can_state["center"][0]
-                dy = target["center"][1] - can_state["center"][1]
-                target_inside = ((dx * dx) + (dy * dy)) ** 0.5 <= config.TARGET_COLLECTED_DISTANCE_PX
+                if config.CAN_FOOTPRINT_SHAPE == "square":
+                    footprint = square_can_footprint(can_state)
+                    target_inside = footprint is not None and point_inside_square_can(target["center"], footprint)
+                else:
+                    dx = target["center"][0] - can_state["center"][0]
+                    dy = target["center"][1] - can_state["center"][1]
+                    target_inside = ((dx * dx) + (dy * dy)) ** 0.5 <= config.TARGET_COLLECTED_DISTANCE_PX
 
             if not target_collected:
                 if target_inside:
@@ -504,8 +508,11 @@ def main():
                 obstacle_distance is not None
                 and obstacle_distance <= config.OBSTACLE_DANGER_DISTANCE_PX
             )
-            stop_distance_px = config.VIEW_SAFE_STOP_PX if view_safety else config.HOME_STOP_PX if returning_home else None
+            stop_distance_px = config.VIEW_SAFE_STOP_PX if view_safety else config.HOME_STOP_PX if returning_home else 0.0
             raw_command, telemetry = compute_command(can_state, command_target, stop_distance_px)
+            if target_inside and not returning_home and not view_safety:
+                raw_command = config.CMD_STOP
+                telemetry = {"distance_px": 0.0, "angle_deg": 0.0, "turn_strength": 0}
             if boundary_safety:
                 raw_command = config.CMD_STOP
                 telemetry = {"distance_px": None, "angle_deg": None, "turn_strength": 0}

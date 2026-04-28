@@ -449,7 +449,7 @@ def main():
                 command_target = {"center": home_center}
                 returning_home = True
 
-            if config.KEEP_TRASH_CAN_IN_VIEW and can_state is not None:
+            if config.KEEP_TRASH_CAN_IN_VIEW and can_state is not None and target_seen_once:
                 if can_near_camera_edge(can_state):
                     command_target = {"center": (int(config.FRAME_WIDTH / 2), int(config.FRAME_HEIGHT / 2))}
                     returning_home = False

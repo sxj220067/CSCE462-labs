@@ -370,6 +370,7 @@ def main():
     missed_target_frames = 0
     home_center = None
     target_inside_since = None
+    target_lost_since = None
     target_collected = False
     return_home_mode = False
     target_seen_once = False
@@ -395,15 +396,18 @@ def main():
                 home_center = can_state["center"]
                 print(f"Home position set to {home_center}")
 
+            now = time.time()
             if return_home_mode:
                 target = None
                 locked_target = None
+                target_lost_since = None
             else:
                 target = choose_target(candidate_targets, locked_target)
                 if target is not None:
                     target_seen_once = True
                     locked_target = target
                     missed_target_frames = 0
+                    target_lost_since = None
                 elif locked_target is not None and missed_target_frames < config.LOCK_MAX_MISSED_FRAMES:
                     target = locked_target
                     missed_target_frames += 1
@@ -411,11 +415,14 @@ def main():
                     locked_target = None
                     target = None
                     if config.RETURN_HOME_WHEN_TARGET_LOST and target_seen_once:
-                        return_home_mode = True
-                        print("Target lost. Returning home.")
+                        if target_lost_since is None:
+                            target_lost_since = now
+                        elif now - target_lost_since >= config.TARGET_LOST_RETURN_HOME_SECONDS:
+                            return_home_mode = True
+                            target_lost_since = None
+                            print("Target lost for 2.0s. Returning home.")
                     missed_target_frames = 0
 
-            now = time.time()
             target_inside = False
             if can_state is not None and target is not None:
                 dx = target["center"][0] - can_state["center"][0]
@@ -505,6 +512,7 @@ def main():
                 target_inside_since = None
                 locked_target = None
                 missed_target_frames = 0
+                target_lost_since = None
                 returning_home = False
                 command_target = None
                 print("Arrived home. Mission state reset.")
@@ -557,6 +565,7 @@ def main():
                     target_collected = False
                     return_home_mode = False
                     target_seen_once = False
+                    target_lost_since = None
                     print("Target lock reset.")
                 if key == ord("h") and can_state is not None:
                     home_center = can_state["center"]

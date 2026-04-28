@@ -29,12 +29,12 @@ MAX_BOUNDARY_AREA = FRAME_WIDTH * FRAME_HEIGHT
 # HSV ranges are in OpenCV format: H in [0,179], S/V in [0,255].
 # Adjust these for your real lighting and tape/object colors.
 FRONT_MARKER_HSV_RANGES = (
-    # Pink/magenta front marker. Tuned around measured HSV H=142 S=231 V=254.
-    ((132, 150, 180), (152, 255, 255)),
+    # Pink/magenta front marker. Tuned around measured HSV H=140 S=255 V=255.
+    ((130, 180, 190), (150, 255, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
-    # Green back marker. Tuned around measured HSV H=61 S=80 V=252.
-    ((52, 45, 190), (70, 140, 255)),
+    # Green back marker. Tuned around measured HSV H=72 S=114 V=245.
+    ((62, 55, 180), (82, 175, 255)),
 )
 TARGET_HSV_RANGES = (
     # Tennis ball target. Tuned around measured HSV H=88 S=80 V=240.

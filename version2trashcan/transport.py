@@ -158,8 +158,8 @@ class GpioMotorTransport:
     def send_payload(self, payload, telemetry=None):
         command = payload[0]
         if command == config.CMD_FORWARD:
-            self._set_left_motor(True, config.GPIO_DRIVE_DUTY)
-            self._set_right_motor(True, config.GPIO_DRIVE_DUTY)
+            self._set_left_motor(True, config.GPIO_LEFT_DRIVE_DUTY)
+            self._set_right_motor(True, config.GPIO_RIGHT_DRIVE_DUTY)
         elif command == config.CMD_LEFT:
             if config.GPIO_TURN_MODE == "spin":
                 self._set_left_motor(False, config.GPIO_TURN_MAX_DUTY)

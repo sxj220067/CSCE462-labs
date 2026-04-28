@@ -25,7 +25,7 @@ def draw_detection(
     boundaries=None,
     boundary_safety=False,
 ):
-    del home_center, returning_home, target_collected, view_safety
+    del target_collected, view_safety
     del obstacles, avoidance_target, boundaries, boundary_safety
 
     if can_state is not None:
@@ -51,6 +51,12 @@ def draw_detection(
 
     if can_state is not None and target is not None:
         cv2.line(frame, can_state["center"], target["center"], (0, 255, 255), 2)
+    elif can_state is not None and returning_home and home_center is not None:
+        cv2.line(frame, can_state["center"], home_center, (255, 255, 0), 2)
+
+    if home_center is not None:
+        cv2.drawMarker(frame, home_center, (255, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=18, thickness=2)
+        cv2.putText(frame, "home", (home_center[0] + 8, home_center[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
 
     dist_px = telemetry["distance_px"]
     angle_deg = telemetry["angle_deg"]
@@ -69,6 +75,9 @@ def main():
     last_status_print = 0.0
     last_command_sent_at = 0.0
     last_command = None
+    home_center = None
+    target_lost_since = None
+    return_home_mode = False
 
     print(
         f"Version2TrashCan starting: backend={config.CAMERA_BACKEND}, "
@@ -85,9 +94,39 @@ def main():
             can_state = result["can_state"]
             candidates = result["target_candidates"]
             target = candidates[0] if candidates else None
-            command, telemetry = compute_command(can_state, target)
-
             now = time.time()
+
+            if home_center is None and can_state is not None:
+                home_center = can_state["center"]
+                print(f"Home position set to {home_center}")
+
+            if target is not None:
+                target_lost_since = None
+                return_home_mode = False
+                command_target = target
+                returning_home = False
+                stop_distance_px = None
+            else:
+                if target_lost_since is None:
+                    target_lost_since = now
+                elif now - target_lost_since >= config.TARGET_LOST_RETURN_HOME_SECONDS:
+                    return_home_mode = True
+
+                if return_home_mode and home_center is not None:
+                    command_target = {"center": home_center}
+                    returning_home = True
+                    stop_distance_px = config.HOME_STOP_PX
+                else:
+                    command_target = None
+                    returning_home = False
+                    stop_distance_px = None
+
+            command, telemetry = compute_command(can_state, command_target, stop_distance_px)
+            if returning_home and command == config.CMD_STOP:
+                return_home_mode = False
+                target_lost_since = None
+                print("Arrived home.")
+
             if command != last_command or (now - last_command_sent_at) >= config.COMMAND_UPDATE_INTERVAL_S:
                 transport.send(command, telemetry)
                 last_command = command
@@ -99,6 +138,7 @@ def main():
                     f"can_found={can_state is not None} "
                     f"target_found={target is not None} "
                     f"candidates={len(candidates)} "
+                    f"returning_home={returning_home} "
                     f"command={command} "
                     f"distance={telemetry['distance_px']} "
                     f"angle={telemetry['angle_deg']} "
@@ -108,7 +148,7 @@ def main():
 
             if window_enabled:
                 overlay = frame.copy()
-                draw_detection(overlay, can_state, target, command, telemetry)
+                draw_detection(overlay, can_state, target, command, telemetry, home_center, returning_home)
                 cv2.imshow(config.WINDOW_NAME, overlay)
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q") or key == 27:

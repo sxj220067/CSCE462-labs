@@ -1,20 +1,28 @@
-import sys
-import time
+import argparse
 
 import config
 from transport import create_transport
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Send one movement command using the configured transport.")
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default=config.CMD_STOP,
+        choices=(config.CMD_FORWARD, config.CMD_LEFT, config.CMD_RIGHT, config.CMD_STOP),
+        help="Command to send.",
+    )
+    return parser.parse_args()
+
+
 def main():
-    command = sys.argv[1] if len(sys.argv) > 1 else config.CMD_STOP
-    if command not in {config.CMD_FORWARD, config.CMD_LEFT, config.CMD_RIGHT, config.CMD_STOP}:
-        raise SystemExit(f"Unsupported command: {command}")
+    args = parse_args()
 
     transport = create_transport()
     try:
-        print(f"Sending command {command} using transport={config.COMMAND_TRANSPORT}")
-        transport.send(command)
-        time.sleep(0.2)
+        print(f"Sending command {args.command} using transport={config.COMMAND_TRANSPORT}")
+        transport.send(args.command)
     finally:
         transport.close()
 

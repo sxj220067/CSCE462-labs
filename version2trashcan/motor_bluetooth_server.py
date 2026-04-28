@@ -27,7 +27,10 @@ def handle_client(conn, address, transport):
     try:
         with conn:
             while True:
-                data = conn.recv(1024)
+                try:
+                    data = conn.recv(1024)
+                except ConnectionResetError:
+                    break
                 if not data:
                     break
                 buffer += data.decode("ascii", errors="ignore")

@@ -126,12 +126,12 @@ class GpioMotorTransport:
 
     def _set_left_motor(self, forward, duty):
         self._gpio.output(config.GPIO_LEFT_IN1, self._gpio.HIGH if forward else self._gpio.LOW)
-        self._gpio.output(config.GPIO_LEFT_IN2, self._gpio.LOW)
+        self._gpio.output(config.GPIO_LEFT_IN2, self._gpio.LOW if forward else self._gpio.HIGH)
         self._left_pwm.ChangeDutyCycle(duty)
 
     def _set_right_motor(self, forward, duty):
         self._gpio.output(config.GPIO_RIGHT_IN1, self._gpio.HIGH if forward else self._gpio.LOW)
-        self._gpio.output(config.GPIO_RIGHT_IN2, self._gpio.LOW)
+        self._gpio.output(config.GPIO_RIGHT_IN2, self._gpio.LOW if forward else self._gpio.HIGH)
         self._right_pwm.ChangeDutyCycle(duty)
 
     def _turn_duty(self, telemetry):
@@ -161,11 +161,13 @@ class GpioMotorTransport:
             self._set_left_motor(True, config.GPIO_DRIVE_DUTY)
             self._set_right_motor(True, config.GPIO_DRIVE_DUTY)
         elif command == config.CMD_LEFT:
-            self._set_left_motor(True, 0)
-            self._set_right_motor(True, self._turn_duty(telemetry))
+            turn_duty = self._turn_duty(telemetry)
+            self._set_left_motor(False, turn_duty)
+            self._set_right_motor(True, turn_duty)
         elif command == config.CMD_RIGHT:
-            self._set_left_motor(True, self._turn_duty(telemetry))
-            self._set_right_motor(True, 0)
+            turn_duty = self._turn_duty(telemetry)
+            self._set_left_motor(True, turn_duty)
+            self._set_right_motor(False, turn_duty)
         else:
             self.stop()
 

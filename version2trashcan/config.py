@@ -36,8 +36,8 @@ FRONT_MARKER_HSV_RANGES = (
     ((125, 80, 185), (145, 210, 255)),
 )
 BACK_MARKER_HSV_RANGES = (
-    # Green back marker. Tuned around measured HSV H=112 S=107 V=255.
-    ((102, 55, 185), (122, 170, 255)),
+    # Green back marker. Tuned around measured HSV H=106 S=162 V=255.
+    ((98, 100, 185), (114, 220, 255)),
 )
 TARGET_HSV_RANGES = (
     # Tennis ball target. Tuned around measured HSV H=84 S=121 V=237.

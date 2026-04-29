@@ -33,6 +33,11 @@ def _find_largest_blob(mask, min_area, max_area):
         if area < min_area or area > max_area:
             continue
         x, y, w, h = cv2.boundingRect(contour)
+        if w > config.MAX_MARKER_WIDTH_PX or h > config.MAX_MARKER_HEIGHT_PX:
+            continue
+        aspect_ratio = max(w / max(1, h), h / max(1, w))
+        if aspect_ratio > config.MAX_MARKER_ASPECT_RATIO:
+            continue
         center = (int(x + (w / 2)), int(y + (h / 2)))
         if best_area is None or area > best_area:
             best_area = area
